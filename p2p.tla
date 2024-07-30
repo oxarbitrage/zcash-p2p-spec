@@ -30,6 +30,14 @@ define
             the_network[i]
     ]
 
+    \* Update the chain tip of a peer in the network.
+    UpdatePeerTip(peer_address, new_tip) == [i \in 1..Len(the_network) |->
+        IF the_network[i].peer = peer_address THEN
+            [the_network[i] EXCEPT !.chain_tip = new_tip]
+        ELSE
+            the_network[i]
+    ]
+
     \* Given a block collection, a start height and an end height, returns the blocks in the given range.
     FindBlocks(block_collection, start_height, end_height) == 
         [b \in block_collection |-> b.height >= start_height /\ b.height <= end_height]
@@ -182,6 +190,8 @@ begin
             ]);        
             c := c + 1;
         end while;
+    UpdateTip:
+        the_network := UpdatePeerTip(local_peer_addr, block_data.height);
     return;
 end procedure;
 
@@ -260,18 +270,21 @@ begin
     CheckSync:
         await Cardinality(the_network[1].blocks) = 4;
         await Cardinality(the_network[2].blocks) = 4;
+
+        await the_network[1].chain_tip = 4;
+        await the_network[2].chain_tip = 4;
         print "Network in sync!";
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "819c48cd" /\ chksum(tla) = "4417e129")
-\* Process variable remote_peer_addr of process client_task at line 190 col 11 changed to remote_peer_addr_
-\* Process variable local_peer_addr of process client_task at line 190 col 29 changed to local_peer_addr_
-\* Process variable local_peer_addr of process Main at line 228 col 11 changed to local_peer_addr_M
-\* Process variable remote_peer_addr of process Main at line 228 col 40 changed to remote_peer_addr_M
-\* Procedure variable hashes of procedure build_inventory_message at line 138 col 19 changed to hashes_
-\* Parameter local_peer_addr of procedure create_connection at line 63 col 47 changed to local_peer_addr_c
-\* Parameter local_peer_addr of procedure get_peer_from_the_network at line 106 col 37 changed to local_peer_addr_g
+\* BEGIN TRANSLATION (chksum(pcal) = "6bc603af" /\ chksum(tla) = "85b54dab")
+\* Process variable remote_peer_addr of process client_task at line 200 col 11 changed to remote_peer_addr_
+\* Process variable local_peer_addr of process client_task at line 200 col 29 changed to local_peer_addr_
+\* Process variable local_peer_addr of process Main at line 238 col 11 changed to local_peer_addr_M
+\* Process variable remote_peer_addr of process Main at line 238 col 40 changed to remote_peer_addr_M
+\* Procedure variable hashes of procedure build_inventory_message at line 146 col 19 changed to hashes_
+\* Parameter local_peer_addr of procedure create_connection at line 71 col 47 changed to local_peer_addr_c
+\* Parameter local_peer_addr of procedure get_peer_from_the_network at line 114 col 37 changed to local_peer_addr_g
 CONSTANT defaultInitValue
 VARIABLES the_network, selected_remote_peer, message_header, message_payload, 
           pc, stack
@@ -291,6 +304,14 @@ UpdatePeerBlocks(peer_address, new_blocks) == [i \in 1..Len(the_network) |->
 UpdatePeerSet(local_peer_address, remote_peer_address) == [i \in 1..Len(the_network) |->
     IF the_network[i].peer = local_peer_address THEN
         [the_network[i] EXCEPT !.peer_set = @ \cup {remote_peer_address}]
+    ELSE
+        the_network[i]
+]
+
+
+UpdatePeerTip(peer_address, new_tip) == [i \in 1..Len(the_network) |->
+    IF the_network[i].peer = peer_address THEN
+        [the_network[i] EXCEPT !.chain_tip = new_tip]
     ELSE
         the_network[i]
 ]
@@ -554,7 +575,7 @@ IncorporateLoop(self) == /\ pc[self] = "IncorporateLoop"
                          /\ IF c[self] <= Len(message_payload.inventory)
                                THEN /\ block_data' = [block_data EXCEPT ![self] = FindBlockByHash(selected_remote_peer.blocks, message_payload.inventory[c[self]].hash)]
                                     /\ Assert(block_data'[self].hash = message_payload.inventory[c[self]].hash, 
-                                              "Failure of assertion at line 176, column 13.")
+                                              "Failure of assertion at line 184, column 13.")
                                     /\ the_network' =                UpdatePeerBlocks(local_peer_addr[self], [
                                                           height |-> block_data'[self].height,
                                                           hash |-> block_data'[self].hash,
@@ -562,25 +583,37 @@ IncorporateLoop(self) == /\ pc[self] = "IncorporateLoop"
                                                       ])
                                     /\ c' = [c EXCEPT ![self] = c[self] + 1]
                                     /\ pc' = [pc EXCEPT ![self] = "IncorporateLoop"]
-                                    /\ UNCHANGED << stack, local_peer_addr, 
-                                                    inventory >>
-                               ELSE /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
-                                    /\ c' = [c EXCEPT ![self] = Head(stack[self]).c]
-                                    /\ block_data' = [block_data EXCEPT ![self] = Head(stack[self]).block_data]
-                                    /\ local_peer_addr' = [local_peer_addr EXCEPT ![self] = Head(stack[self]).local_peer_addr]
-                                    /\ inventory' = [inventory EXCEPT ![self] = Head(stack[self]).inventory]
-                                    /\ stack' = [stack EXCEPT ![self] = Tail(stack[self])]
-                                    /\ UNCHANGED the_network
+                               ELSE /\ pc' = [pc EXCEPT ![self] = "UpdateTip"]
+                                    /\ UNCHANGED << the_network, c, block_data >>
                          /\ UNCHANGED << selected_remote_peer, message_header, 
-                                         message_payload, remote_peer_addr, 
-                                         local_peer_addr_c, local_peer_addr_g, 
-                                         hashes, found_blocks, blocks, hashes_, 
-                                         block_headers, remote_peer_addr_, 
+                                         message_payload, stack, 
+                                         remote_peer_addr, local_peer_addr_c, 
+                                         local_peer_addr_g, hashes, 
+                                         found_blocks, blocks, hashes_, 
+                                         block_headers, local_peer_addr, 
+                                         inventory, remote_peer_addr_, 
                                          local_peer_addr_, local_peer_addr_M, 
                                          local_peer, remote_peer_addr_M, 
                                          remote_peer >>
 
+UpdateTip(self) == /\ pc[self] = "UpdateTip"
+                   /\ the_network' = UpdatePeerTip(local_peer_addr[self], block_data[self].height)
+                   /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
+                   /\ c' = [c EXCEPT ![self] = Head(stack[self]).c]
+                   /\ block_data' = [block_data EXCEPT ![self] = Head(stack[self]).block_data]
+                   /\ local_peer_addr' = [local_peer_addr EXCEPT ![self] = Head(stack[self]).local_peer_addr]
+                   /\ inventory' = [inventory EXCEPT ![self] = Head(stack[self]).inventory]
+                   /\ stack' = [stack EXCEPT ![self] = Tail(stack[self])]
+                   /\ UNCHANGED << selected_remote_peer, message_header, 
+                                   message_payload, remote_peer_addr, 
+                                   local_peer_addr_c, local_peer_addr_g, 
+                                   hashes, found_blocks, blocks, hashes_, 
+                                   block_headers, remote_peer_addr_, 
+                                   local_peer_addr_, local_peer_addr_M, 
+                                   local_peer, remote_peer_addr_M, remote_peer >>
+
 incorporate_data_to_local_peer(self) == IncorporateLoop(self)
+                                           \/ UpdateTip(self)
 
 Listening == /\ pc["Peer Client Task"] = "Listening"
              /\ IF message_header # defaultInitValue
@@ -797,6 +830,8 @@ RequestMoreBlocks == /\ pc["Main"] = "RequestMoreBlocks"
 CheckSync == /\ pc["Main"] = "CheckSync"
              /\ Cardinality(the_network[1].blocks) = 4
              /\ Cardinality(the_network[2].blocks) = 4
+             /\ the_network[1].chain_tip = 4
+             /\ the_network[2].chain_tip = 4
              /\ PrintT("Network in sync!")
              /\ pc' = [pc EXCEPT !["Main"] = "Done"]
              /\ UNCHANGED << the_network, selected_remote_peer, message_header, 
