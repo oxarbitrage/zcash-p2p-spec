@@ -8,25 +8,23 @@ MAX_PEERS == 2
 IDENTIFIER_DIFFERENCE_OF_PROCESSES == 1000
 
 PEER1 == [peer |-> "peer1", blocks |-> {
-            [height |-> 1, hash |-> "blockhash1", block |-> "serialized block data 1"],
-            [height |-> 2, hash |-> "blockhash2", block |-> "serialized block data 2"],
-            [height |-> 3, hash |-> "blockhash3", block |-> "serialized block data 3"],
-            [height |-> 4, hash |-> "blockhash4", block |-> "serialized block data 4"]
-        }, peer_set |-> {}, chain_tip |-> 4]
+    [height |-> 1, hash |-> "blockhash1", block |-> "serialized block data 1"],
+    [height |-> 2, hash |-> "blockhash2", block |-> "serialized block data 2"],
+    [height |-> 3, hash |-> "blockhash3", block |-> "serialized block data 3"],
+    [height |-> 4, hash |-> "blockhash4", block |-> "serialized block data 4"]
+}, peer_set |-> {}, chain_tip |-> 4]
 
-PEER2 == [
-            peer |-> "peer2",
-            blocks |-> {}, \* No blocks.
-            peer_set |-> {}, \* No connections.
-            chain_tip |-> 0 \* No blocks.
-        ]
+PEER2 == [peer |-> "peer2",
+    blocks |-> {}, \* No blocks.
+    peer_set |-> {}, \* No connections.
+    chain_tip |-> 0 \* No blocks.
+]
 
-PEER3 == [
-            peer |-> "peer3",
-            blocks |-> {}, \* No blocks.
-            peer_set |-> {}, \* No connections.
-            chain_tip |-> 0 \* No blocks.
-        ]
+PEER3 == [peer |-> "peer3",
+    blocks |-> {}, \* No blocks.
+    peer_set |-> {}, \* No connections.
+    chain_tip |-> 0 \* No blocks.
+]
 
 (*--algorithm p2p
 
@@ -297,13 +295,13 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "20339e6d" /\ chksum(tla) = "263bc284")
-\* Process variable remote_peer_addr of process client_task at line 212 col 11 changed to remote_peer_addr_
-\* Process variable local_peer_addr of process client_task at line 212 col 29 changed to local_peer_addr_
-\* Process variable remote_peer_addr of process Peer at line 255 col 11 changed to remote_peer_addr_P
-\* Procedure variable hashes of procedure build_inventory_message at line 151 col 19 changed to hashes_
-\* Parameter local_peer_addr of procedure create_connection at line 75 col 47 changed to local_peer_addr_c
-\* Parameter local_peer_addr of procedure get_peer_from_the_network at line 118 col 37 changed to local_peer_addr_g
+\* BEGIN TRANSLATION (chksum(pcal) = "20339e6d" /\ chksum(tla) = "8b219b67")
+\* Process variable remote_peer_addr of process client_task at line 210 col 11 changed to remote_peer_addr_
+\* Process variable local_peer_addr of process client_task at line 210 col 29 changed to local_peer_addr_
+\* Process variable remote_peer_addr of process Peer at line 253 col 11 changed to remote_peer_addr_P
+\* Procedure variable hashes of procedure build_inventory_message at line 149 col 19 changed to hashes_
+\* Parameter local_peer_addr of procedure create_connection at line 73 col 47 changed to local_peer_addr_c
+\* Parameter local_peer_addr of procedure get_peer_from_the_network at line 116 col 37 changed to local_peer_addr_g
 CONSTANT defaultInitValue
 VARIABLES the_network, selected_remote_peer, message_header, message_payload, 
           pc, stack
@@ -557,7 +555,7 @@ IncorporateLoop(self) == /\ pc[self] = "IncorporateLoop"
                          /\ IF c[self] <= Len(message_payload[self].inventory)
                                THEN /\ block_data' = [block_data EXCEPT ![self] = FindBlockByHash(selected_remote_peer.blocks, message_payload[self].inventory[c[self]].hash)]
                                     /\ Assert(block_data'[self].hash = message_payload[self].inventory[c[self]].hash, 
-                                              "Failure of assertion at line 197, column 13.")
+                                              "Failure of assertion at line 195, column 13.")
                                     /\ the_network' =                UpdatePeerBlocks(local_peer_addr[self], [
                                                           height |-> block_data'[self].height,
                                                           hash |-> block_data'[self].hash,
