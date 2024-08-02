@@ -29,7 +29,7 @@ PEER3 == [peer |-> "peer3",
 (*--algorithm p2p
 
 variables
-    the_network = <<>>;
+    the_network = <<PEER1, PEER2>>;
     selected_remote_peer = defaultInitValue;
     message_header = <<defaultInitValue, defaultInitValue, defaultInitValue>>;
     message_payload = <<defaultInitValue, defaultInitValue, defaultInitValue>>;
@@ -288,14 +288,8 @@ begin
         print "Network in sync!";
 end process;
 
-process Main = 0
-begin
-    AddPeer:
-        the_network := <<PEER1, PEER2>>;
-end process;
-
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "20339e6d" /\ chksum(tla) = "8b219b67")
+\* BEGIN TRANSLATION (chksum(pcal) = "153be09f" /\ chksum(tla) = "8e6579f0")
 \* Process variable remote_peer_addr of process client_task at line 210 col 11 changed to remote_peer_addr_
 \* Process variable local_peer_addr of process client_task at line 210 col 29 changed to local_peer_addr_
 \* Process variable remote_peer_addr of process Peer at line 253 col 11 changed to remote_peer_addr_P
@@ -351,10 +345,10 @@ vars == << the_network, selected_remote_peer, message_header, message_payload,
            local_peer_addr, inventory, c, block_data, remote_peer_addr_, 
            local_peer_addr_, remote_peer_addr_P, remote_peer >>
 
-ProcSet == (1..MAX_PEERS) \cup ((IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS)) \cup {0}
+ProcSet == (1..MAX_PEERS) \cup ((IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS))
 
 Init == (* Global variables *)
-        /\ the_network = <<>>
+        /\ the_network = <<PEER1, PEER2>>
         /\ selected_remote_peer = defaultInitValue
         /\ message_header = <<defaultInitValue, defaultInitValue, defaultInitValue>>
         /\ message_payload = <<defaultInitValue, defaultInitValue, defaultInitValue>>
@@ -383,8 +377,7 @@ Init == (* Global variables *)
         /\ remote_peer = [self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS) |-> defaultInitValue]
         /\ stack = [self \in ProcSet |-> << >>]
         /\ pc = [self \in ProcSet |-> CASE self \in 1..MAX_PEERS -> "Listening"
-                                        [] self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS) -> "Connect"
-                                        [] self = 0 -> "AddPeer"]
+                                        [] self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS) -> "Connect"]
 
 VersionMessage(self) == /\ pc[self] = "VersionMessage"
                         /\ message_header' = [message_header EXCEPT ![self - IDENTIFIER_DIFFERENCE_OF_PROCESSES] =                                                          [
@@ -822,31 +815,17 @@ Peer(self) == Connect(self) \/ SelectPeerForRequestFromLocalPeer(self)
                  \/ RequestInventory(self) \/ RequestMoreBlocks(self)
                  \/ CheckSync(self)
 
-AddPeer == /\ pc[0] = "AddPeer"
-           /\ the_network' = <<PEER1, PEER2>>
-           /\ pc' = [pc EXCEPT ![0] = "Done"]
-           /\ UNCHANGED << selected_remote_peer, message_header, 
-                           message_payload, stack, remote_peer_addr, 
-                           local_peer_addr_c, local_peer_addr_g, hashes, 
-                           found_blocks, blocks, hashes_, block_headers, 
-                           local_peer_addr, inventory, c, block_data, 
-                           remote_peer_addr_, local_peer_addr_, 
-                           remote_peer_addr_P, remote_peer >>
-
-Main == AddPeer
-
 (* Allow infinite stuttering to prevent deadlock on termination. *)
 Terminating == /\ \A self \in ProcSet: pc[self] = "Done"
                /\ UNCHANGED vars
 
-Next == Main
-           \/ (\E self \in ProcSet:  \/ create_connection(self)
-                                     \/ send_verack(self)
-                                     \/ get_peer_from_the_network(self)
-                                     \/ request_blocks(self)
-                                     \/ build_inventory_message(self)
-                                     \/ process_inventory_message(self)
-                                     \/ incorporate_data_to_local_peer(self))
+Next == (\E self \in ProcSet:  \/ create_connection(self)
+                               \/ send_verack(self)
+                               \/ get_peer_from_the_network(self)
+                               \/ request_blocks(self)
+                               \/ build_inventory_message(self)
+                               \/ process_inventory_message(self)
+                               \/ incorporate_data_to_local_peer(self))
            \/ (\E self \in 1..MAX_PEERS: client_task(self))
            \/ (\E self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS): Peer(self))
            \/ Terminating
