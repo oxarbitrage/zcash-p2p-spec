@@ -1,5 +1,5 @@
 ---- MODULE p2p ----
-EXTENDS TLC, Sequences, Naturals, FiniteSets, Utils
+EXTENDS TLC, Sequences, Naturals, FiniteSets, Utils, Blockchain
 
 MaxGetBlocksInvResponse == 3
 
@@ -7,29 +7,10 @@ MAX_PEERS == 2
 
 IDENTIFIER_DIFFERENCE_OF_PROCESSES == 1000
 
-PEER1 == [peer |-> "peer1", blocks |-> {
-    [height |-> 1, hash |-> "blockhash1", block |-> "serialized block data 1"],
-    [height |-> 2, hash |-> "blockhash2", block |-> "serialized block data 2"],
-    [height |-> 3, hash |-> "blockhash3", block |-> "serialized block data 3"],
-    [height |-> 4, hash |-> "blockhash4", block |-> "serialized block data 4"]
-}, peer_set |-> {}, chain_tip |-> 4]
-
-PEER2 == [peer |-> "peer2",
-    blocks |-> {}, \* No blocks.
-    peer_set |-> {}, \* No connections.
-    chain_tip |-> 0 \* No blocks.
-]
-
-PEER3 == [peer |-> "peer3",
-    blocks |-> {}, \* No blocks.
-    peer_set |-> {}, \* No connections.
-    chain_tip |-> 0 \* No blocks.
-]
-
 (*--algorithm p2p
 
 variables
-    the_network = <<PEER1, PEER2>>;
+    the_network = SetToSeq(PEERS);
     selected_remote_peer = defaultInitValue;
     message_header = <<defaultInitValue, defaultInitValue, defaultInitValue>>;
     message_payload = <<defaultInitValue, defaultInitValue, defaultInitValue>>;
@@ -292,7 +273,7 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "f990b8d4" /\ chksum(tla) = "a35c40c4")
+\* BEGIN TRANSLATION (chksum(pcal) = "23aa3abc" /\ chksum(tla) = "838e6a82")
 \* Process variable remote_peer_addr of process client_task at line 210 col 11 changed to remote_peer_addr_
 \* Process variable local_peer_addr of process client_task at line 210 col 29 changed to local_peer_addr_
 \* Process variable remote_peer_addr of process Peer at line 253 col 11 changed to remote_peer_addr_P
@@ -354,7 +335,7 @@ vars == << the_network, selected_remote_peer, message_header, message_payload,
 ProcSet == (1..MAX_PEERS) \cup ((IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS))
 
 Init == (* Global variables *)
-        /\ the_network = <<PEER1, PEER2>>
+        /\ the_network = SetToSeq(PEERS)
         /\ selected_remote_peer = defaultInitValue
         /\ message_header = <<defaultInitValue, defaultInitValue, defaultInitValue>>
         /\ message_payload = <<defaultInitValue, defaultInitValue, defaultInitValue>>
