@@ -174,26 +174,26 @@ end procedure;
 
 \* Peer Client Task
 process client_task \in 1..MAX_PEERS
-variables remote_peer_addr, local_peer_addr;
+variables remote_peer_addr, local_peer_addr, id = self;
 begin
     Listening:
-        await self > 1;
-        await Len(the_network) >= self;
-        await Len(message_header) >= self;
-        if message_header[self] = defaultInitValue then
+        await id > 1;
+        await Len(the_network) >= id;
+        await Len(message_header) >= id;
+        if message_header[id] = defaultInitValue then
             goto Listening;
         end if;
     Requests:
-        if message_header[self].command_name = "version" then
-            local_peer_addr := message_payload[self].addr_recv;
-            remote_peer_addr := message_payload[self].addr_trans;
+        if message_header[id].command_name = "version" then
+            local_peer_addr := message_payload[id].addr_recv;
+            remote_peer_addr := message_payload[id].addr_trans;
             call send_verack();
             goto Requests;
-        elsif message_header[self].command_name = "verack" then
+        elsif message_header[id].command_name = "verack" then
             \* Add the remote peer to the peer set of the local peer.
             the_network := UpdatePeerSet(local_peer_addr, remote_peer_addr);
-        elsif message_header[self].command_name = "getblocks" then
-            if message_payload[self].hash_count = 0 then
+        elsif message_header[id].command_name = "getblocks" then
+            if message_payload[id].hash_count = 0 then
                 \* TODO: This is dirty but correct in some sense, it will build inventory with the 
                 \* first `MaxGetBlocksInvResponse` blocks.
                 call build_inventory_message(FindBlocks(selected_remote_peer.blocks, 1, 1 + (MaxGetBlocksInvResponse - 1)));
@@ -204,15 +204,15 @@ begin
                 call build_inventory_message(FindBlocks(selected_remote_peer.blocks, 4, 4 + (MaxGetBlocksInvResponse - 1)));
                 goto Requests;
             end if;
-        elsif message_header[self].command_name = "inv" then
+        elsif message_header[id].command_name = "inv" then
             call process_inventory_message();
             goto Requests;
-        elsif message_header[self].command_name = "getdata" then
-            call incorporate_data_to_local_peer(local_peer_addr, message_payload[self].inventory);
+        elsif message_header[id].command_name = "getdata" then
+            call incorporate_data_to_local_peer(local_peer_addr, message_payload[id].inventory);
         end if;
     ClientTaskLoop:
-        message_header[self] := defaultInitValue;
-        message_payload[self] := defaultInitValue;
+        message_header[id] := defaultInitValue;
+        message_payload[id] := defaultInitValue;
         goto Listening;
 end process;
 
@@ -265,11 +265,12 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "cfb4104a" /\ chksum(tla) = "fab15ec5")
+\* BEGIN TRANSLATION (chksum(pcal) = "42fff51b" /\ chksum(tla) = "cfc79118")
 \* Process variable remote_peer_addr of process client_task at line 177 col 11 changed to remote_peer_addr_
 \* Process variable local_peer_addr of process client_task at line 177 col 29 changed to local_peer_addr_
+\* Process variable id of process client_task at line 177 col 46 changed to id_
 \* Process variable remote_peer_addr of process Peer at line 220 col 11 changed to remote_peer_addr_P
-\* Process variable id of process Peer at line 220 col 42 changed to id_
+\* Process variable id of process Peer at line 220 col 42 changed to id_P
 \* Procedure variable hashes of procedure build_inventory_message at line 116 col 19 changed to hashes_
 \* Parameter local_peer_addr of procedure create_connection at line 54 col 47 changed to local_peer_addr_c
 \* Parameter id of procedure create_connection at line 54 col 64 changed to id_c
@@ -313,14 +314,14 @@ GetPeerFromNetwork(state, peer_address) == CHOOSE rec \in state : rec.peer = pee
 
 VARIABLES remote_peer_addr, local_peer_addr_c, id_c, hashes, id, found_blocks, 
           blocks, hashes_, block_headers, local_peer_addr, inventory, c, 
-          block_data, remote_peer_addr_, local_peer_addr_, remote_peer_addr_P, 
-          remote_peer, id_
+          block_data, remote_peer_addr_, local_peer_addr_, id_, 
+          remote_peer_addr_P, remote_peer, id_P
 
 vars == << the_network, selected_remote_peer, message_header, message_payload, 
            pc, stack, remote_peer_addr, local_peer_addr_c, id_c, hashes, id, 
            found_blocks, blocks, hashes_, block_headers, local_peer_addr, 
-           inventory, c, block_data, remote_peer_addr_, local_peer_addr_, 
-           remote_peer_addr_P, remote_peer, id_ >>
+           inventory, c, block_data, remote_peer_addr_, local_peer_addr_, id_, 
+           remote_peer_addr_P, remote_peer, id_P >>
 
 ProcSet == (1..MAX_PEERS) \cup ((IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS))
 
@@ -349,10 +350,11 @@ Init == (* Global variables *)
         (* Process client_task *)
         /\ remote_peer_addr_ = [self \in 1..MAX_PEERS |-> defaultInitValue]
         /\ local_peer_addr_ = [self \in 1..MAX_PEERS |-> defaultInitValue]
+        /\ id_ = [self \in 1..MAX_PEERS |-> self]
         (* Process Peer *)
         /\ remote_peer_addr_P = [self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS) |-> defaultInitValue]
         /\ remote_peer = [self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS) |-> defaultInitValue]
-        /\ id_ = [self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS) |-> defaultInitValue]
+        /\ id_P = [self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS) |-> defaultInitValue]
         /\ stack = [self \in ProcSet |-> << >>]
         /\ pc = [self \in ProcSet |-> CASE self \in 1..MAX_PEERS -> "Listening"
                                         [] self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS) -> "Connect"]
@@ -383,8 +385,8 @@ VersionMessage(self) == /\ pc[self] = "VersionMessage"
                                         hashes_, block_headers, 
                                         local_peer_addr, inventory, c, 
                                         block_data, remote_peer_addr_, 
-                                        local_peer_addr_, remote_peer_addr_P, 
-                                        remote_peer, id_ >>
+                                        local_peer_addr_, id_, 
+                                        remote_peer_addr_P, remote_peer, id_P >>
 
 create_connection(self) == VersionMessage(self)
 
@@ -403,7 +405,8 @@ VerackMessage(self) == /\ pc[self] = "VerackMessage"
                                        hashes_, block_headers, local_peer_addr, 
                                        inventory, c, block_data, 
                                        remote_peer_addr_, local_peer_addr_, 
-                                       remote_peer_addr_P, remote_peer, id_ >>
+                                       id_, remote_peer_addr_P, remote_peer, 
+                                       id_P >>
 
 send_verack(self) == VerackMessage(self)
 
@@ -429,7 +432,8 @@ GetBlocksMessage(self) == /\ pc[self] = "GetBlocksMessage"
                                           block_headers, local_peer_addr, 
                                           inventory, c, block_data, 
                                           remote_peer_addr_, local_peer_addr_, 
-                                          remote_peer_addr_P, remote_peer, id_ >>
+                                          id_, remote_peer_addr_P, remote_peer, 
+                                          id_P >>
 
 request_blocks(self) == GetBlocksMessage(self)
 
@@ -450,9 +454,9 @@ ProcessForInventory(self) == /\ pc[self] = "ProcessForInventory"
                                              id, found_blocks, local_peer_addr, 
                                              inventory, c, block_data, 
                                              remote_peer_addr_, 
-                                             local_peer_addr_, 
+                                             local_peer_addr_, id_, 
                                              remote_peer_addr_P, remote_peer, 
-                                             id_ >>
+                                             id_P >>
 
 InventoryMessage(self) == /\ pc[self] = "InventoryMessage"
                           /\ message_header' = [message_header EXCEPT ![self] =                     [
@@ -475,7 +479,8 @@ InventoryMessage(self) == /\ pc[self] = "InventoryMessage"
                                           id_c, hashes, id, local_peer_addr, 
                                           inventory, c, block_data, 
                                           remote_peer_addr_, local_peer_addr_, 
-                                          remote_peer_addr_P, remote_peer, id_ >>
+                                          id_, remote_peer_addr_P, remote_peer, 
+                                          id_P >>
 
 build_inventory_message(self) == ProcessForInventory(self)
                                     \/ InventoryMessage(self)
@@ -495,7 +500,8 @@ GetDataMessage(self) == /\ pc[self] = "GetDataMessage"
                                         block_headers, local_peer_addr, 
                                         inventory, c, block_data, 
                                         remote_peer_addr_, local_peer_addr_, 
-                                        remote_peer_addr_P, remote_peer, id_ >>
+                                        id_, remote_peer_addr_P, remote_peer, 
+                                        id_P >>
 
 process_inventory_message(self) == GetDataMessage(self)
 
@@ -520,7 +526,8 @@ IncorporateLoop(self) == /\ pc[self] = "IncorporateLoop"
                                          blocks, hashes_, block_headers, 
                                          local_peer_addr, inventory, 
                                          remote_peer_addr_, local_peer_addr_, 
-                                         remote_peer_addr_P, remote_peer, id_ >>
+                                         id_, remote_peer_addr_P, remote_peer, 
+                                         id_P >>
 
 UpdateTip(self) == /\ pc[self] = "UpdateTip"
                    /\ the_network' = UpdatePeerTip(local_peer_addr[self], block_data[self].height)
@@ -535,17 +542,17 @@ UpdateTip(self) == /\ pc[self] = "UpdateTip"
                                    local_peer_addr_c, id_c, hashes, id, 
                                    found_blocks, blocks, hashes_, 
                                    block_headers, remote_peer_addr_, 
-                                   local_peer_addr_, remote_peer_addr_P, 
-                                   remote_peer, id_ >>
+                                   local_peer_addr_, id_, remote_peer_addr_P, 
+                                   remote_peer, id_P >>
 
 incorporate_data_to_local_peer(self) == IncorporateLoop(self)
                                            \/ UpdateTip(self)
 
 Listening(self) == /\ pc[self] = "Listening"
-                   /\ self > 1
-                   /\ Len(the_network) >= self
-                   /\ Len(message_header) >= self
-                   /\ IF message_header[self] = defaultInitValue
+                   /\ id_[self] > 1
+                   /\ Len(the_network) >= id_[self]
+                   /\ Len(message_header) >= id_[self]
+                   /\ IF message_header[id_[self]] = defaultInitValue
                          THEN /\ pc' = [pc EXCEPT ![self] = "Listening"]
                          ELSE /\ pc' = [pc EXCEPT ![self] = "Requests"]
                    /\ UNCHANGED << the_network, selected_remote_peer, 
@@ -554,13 +561,13 @@ Listening(self) == /\ pc[self] = "Listening"
                                    hashes, id, found_blocks, blocks, hashes_, 
                                    block_headers, local_peer_addr, inventory, 
                                    c, block_data, remote_peer_addr_, 
-                                   local_peer_addr_, remote_peer_addr_P, 
-                                   remote_peer, id_ >>
+                                   local_peer_addr_, id_, remote_peer_addr_P, 
+                                   remote_peer, id_P >>
 
 Requests(self) == /\ pc[self] = "Requests"
-                  /\ IF message_header[self].command_name = "version"
-                        THEN /\ local_peer_addr_' = [local_peer_addr_ EXCEPT ![self] = message_payload[self].addr_recv]
-                             /\ remote_peer_addr_' = [remote_peer_addr_ EXCEPT ![self] = message_payload[self].addr_trans]
+                  /\ IF message_header[id_[self]].command_name = "version"
+                        THEN /\ local_peer_addr_' = [local_peer_addr_ EXCEPT ![self] = message_payload[id_[self]].addr_recv]
+                             /\ remote_peer_addr_' = [remote_peer_addr_ EXCEPT ![self] = message_payload[id_[self]].addr_trans]
                              /\ stack' = [stack EXCEPT ![self] = << [ procedure |->  "send_verack",
                                                                       pc        |->  "Requests" ] >>
                                                                   \o stack[self]]
@@ -569,7 +576,7 @@ Requests(self) == /\ pc[self] = "Requests"
                                              hashes_, block_headers, 
                                              local_peer_addr, inventory, c, 
                                              block_data >>
-                        ELSE /\ IF message_header[self].command_name = "verack"
+                        ELSE /\ IF message_header[id_[self]].command_name = "verack"
                                    THEN /\ the_network' = UpdatePeerSet(local_peer_addr_[self], remote_peer_addr_[self])
                                         /\ pc' = [pc EXCEPT ![self] = "ClientTaskLoop"]
                                         /\ UNCHANGED << stack, found_blocks, 
@@ -578,8 +585,8 @@ Requests(self) == /\ pc[self] = "Requests"
                                                         local_peer_addr, 
                                                         inventory, c, 
                                                         block_data >>
-                                   ELSE /\ IF message_header[self].command_name = "getblocks"
-                                              THEN /\ IF message_payload[self].hash_count = 0
+                                   ELSE /\ IF message_header[id_[self]].command_name = "getblocks"
+                                              THEN /\ IF message_payload[id_[self]].hash_count = 0
                                                          THEN /\ /\ found_blocks' = [found_blocks EXCEPT ![self] = FindBlocks(selected_remote_peer.blocks, 1, 1 + (MaxGetBlocksInvResponse - 1))]
                                                                  /\ stack' = [stack EXCEPT ![self] = << [ procedure |->  "build_inventory_message",
                                                                                                           pc        |->  "Requests",
@@ -608,7 +615,7 @@ Requests(self) == /\ pc[self] = "Requests"
                                                                    inventory, 
                                                                    c, 
                                                                    block_data >>
-                                              ELSE /\ IF message_header[self].command_name = "inv"
+                                              ELSE /\ IF message_header[id_[self]].command_name = "inv"
                                                          THEN /\ stack' = [stack EXCEPT ![self] = << [ procedure |->  "process_inventory_message",
                                                                                                        pc        |->  "Requests" ] >>
                                                                                                    \o stack[self]]
@@ -617,8 +624,8 @@ Requests(self) == /\ pc[self] = "Requests"
                                                                               inventory, 
                                                                               c, 
                                                                               block_data >>
-                                                         ELSE /\ IF message_header[self].command_name = "getdata"
-                                                                    THEN /\ /\ inventory' = [inventory EXCEPT ![self] = message_payload[self].inventory]
+                                                         ELSE /\ IF message_header[id_[self]].command_name = "getdata"
+                                                                    THEN /\ /\ inventory' = [inventory EXCEPT ![self] = message_payload[id_[self]].inventory]
                                                                             /\ local_peer_addr' = [local_peer_addr EXCEPT ![self] = local_peer_addr_[self]]
                                                                             /\ stack' = [stack EXCEPT ![self] = << [ procedure |->  "incorporate_data_to_local_peer",
                                                                                                                      pc        |->  "ClientTaskLoop",
@@ -645,12 +652,12 @@ Requests(self) == /\ pc[self] = "Requests"
                                              local_peer_addr_ >>
                   /\ UNCHANGED << selected_remote_peer, message_header, 
                                   message_payload, remote_peer_addr, 
-                                  local_peer_addr_c, id_c, hashes, id, 
-                                  remote_peer_addr_P, remote_peer, id_ >>
+                                  local_peer_addr_c, id_c, hashes, id, id_, 
+                                  remote_peer_addr_P, remote_peer, id_P >>
 
 ClientTaskLoop(self) == /\ pc[self] = "ClientTaskLoop"
-                        /\ message_header' = [message_header EXCEPT ![self] = defaultInitValue]
-                        /\ message_payload' = [message_payload EXCEPT ![self] = defaultInitValue]
+                        /\ message_header' = [message_header EXCEPT ![id_[self]] = defaultInitValue]
+                        /\ message_payload' = [message_payload EXCEPT ![id_[self]] = defaultInitValue]
                         /\ pc' = [pc EXCEPT ![self] = "Listening"]
                         /\ UNCHANGED << the_network, selected_remote_peer, 
                                         stack, remote_peer_addr, 
@@ -659,18 +666,19 @@ ClientTaskLoop(self) == /\ pc[self] = "ClientTaskLoop"
                                         block_headers, local_peer_addr, 
                                         inventory, c, block_data, 
                                         remote_peer_addr_, local_peer_addr_, 
-                                        remote_peer_addr_P, remote_peer, id_ >>
+                                        id_, remote_peer_addr_P, remote_peer, 
+                                        id_P >>
 
 client_task(self) == Listening(self) \/ Requests(self)
                         \/ ClientTaskLoop(self)
 
 Connect(self) == /\ pc[self] = "Connect"
                  /\ Len(the_network) = MAX_PEERS
-                 /\ id_' = [id_ EXCEPT ![self] = self - IDENTIFIER_DIFFERENCE_OF_PROCESSES]
-                 /\ local_peer_addr' = [local_peer_addr EXCEPT ![self] = the_network[id_'[self]].peer]
+                 /\ id_P' = [id_P EXCEPT ![self] = self - IDENTIFIER_DIFFERENCE_OF_PROCESSES]
+                 /\ local_peer_addr' = [local_peer_addr EXCEPT ![self] = the_network[id_P'[self]].peer]
                  /\ remote_peer_addr_P' = [remote_peer_addr_P EXCEPT ![self] = "peer1"]
                  /\ self > (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)
-                 /\ /\ id_c' = [id_c EXCEPT ![self] = id_'[self]]
+                 /\ /\ id_c' = [id_c EXCEPT ![self] = id_P'[self]]
                     /\ local_peer_addr_c' = [local_peer_addr_c EXCEPT ![self] = local_peer_addr'[self]]
                     /\ remote_peer_addr' = [remote_peer_addr EXCEPT ![self] = remote_peer_addr_P'[self]]
                     /\ stack' = [stack EXCEPT ![self] = << [ procedure |->  "create_connection",
@@ -684,10 +692,10 @@ Connect(self) == /\ pc[self] = "Connect"
                                  message_header, message_payload, hashes, id, 
                                  found_blocks, blocks, hashes_, block_headers, 
                                  inventory, c, block_data, remote_peer_addr_, 
-                                 local_peer_addr_, remote_peer >>
+                                 local_peer_addr_, id_, remote_peer >>
 
 SelectPeerForRequestFromLocalPeer(self) == /\ pc[self] = "SelectPeerForRequestFromLocalPeer"
-                                           /\ Cardinality(the_network[id_[self]].peer_set) > 0
+                                           /\ Cardinality(the_network[id_P[self]].peer_set) > 0
                                            /\ selected_remote_peer' =                         GetPeerFromNetwork(
                                                                           ToSet(the_network),
                                                                           CHOOSE peer_set \in GetPeerFromNetwork(ToSet(the_network), local_peer_addr[self]).peer_set : TRUE
@@ -708,14 +716,15 @@ SelectPeerForRequestFromLocalPeer(self) == /\ pc[self] = "SelectPeerForRequestFr
                                                            block_data, 
                                                            remote_peer_addr_, 
                                                            local_peer_addr_, 
+                                                           id_, 
                                                            remote_peer_addr_P, 
-                                                           remote_peer, id_ >>
+                                                           remote_peer, id_P >>
 
 RequestInventory(self) == /\ pc[self] = "RequestInventory"
                           /\ Cardinality(the_network[1].blocks) > 0
-                          /\ Cardinality(the_network[id_[self]].blocks) = 0
+                          /\ Cardinality(the_network[id_P[self]].blocks) = 0
                           /\ /\ hashes' = [hashes EXCEPT ![self] = <<>>]
-                             /\ id' = [id EXCEPT ![self] = id_[self]]
+                             /\ id' = [id EXCEPT ![self] = id_P[self]]
                              /\ stack' = [stack EXCEPT ![self] = << [ procedure |->  "request_blocks",
                                                                       pc        |->  "RequestMoreBlocks",
                                                                       hashes    |->  hashes[self],
@@ -729,15 +738,16 @@ RequestInventory(self) == /\ pc[self] = "RequestInventory"
                                           block_headers, local_peer_addr, 
                                           inventory, c, block_data, 
                                           remote_peer_addr_, local_peer_addr_, 
-                                          remote_peer_addr_P, remote_peer, id_ >>
+                                          id_, remote_peer_addr_P, remote_peer, 
+                                          id_P >>
 
 RequestMoreBlocks(self) == /\ pc[self] = "RequestMoreBlocks"
                            /\ Cardinality(the_network[1].blocks) = 4
-                           /\ Cardinality(the_network[id_[self]].blocks) = 3
-                           /\ message_header[id_[self]] = defaultInitValue
-                           /\ message_payload[id_[self]] = defaultInitValue
+                           /\ Cardinality(the_network[id_P[self]].blocks) = 3
+                           /\ message_header[id_P[self]] = defaultInitValue
+                           /\ message_payload[id_P[self]] = defaultInitValue
                            /\ /\ hashes' = [hashes EXCEPT ![self] = <<"blockhash4">>]
-                              /\ id' = [id EXCEPT ![self] = id_[self]]
+                              /\ id' = [id EXCEPT ![self] = id_P[self]]
                               /\ stack' = [stack EXCEPT ![self] = << [ procedure |->  "request_blocks",
                                                                        pc        |->  "CheckSync",
                                                                        hashes    |->  hashes[self],
@@ -751,13 +761,13 @@ RequestMoreBlocks(self) == /\ pc[self] = "RequestMoreBlocks"
                                            block_headers, local_peer_addr, 
                                            inventory, c, block_data, 
                                            remote_peer_addr_, local_peer_addr_, 
-                                           remote_peer_addr_P, remote_peer, 
-                                           id_ >>
+                                           id_, remote_peer_addr_P, 
+                                           remote_peer, id_P >>
 
 CheckSync(self) == /\ pc[self] = "CheckSync"
                    /\ Cardinality(the_network[1].blocks) = 4
-                   /\ Cardinality(the_network[id_[self]].blocks) = 4
-                   /\ the_network[id_[self]].chain_tip = 4
+                   /\ Cardinality(the_network[id_P[self]].blocks) = 4
+                   /\ the_network[id_P[self]].chain_tip = 4
                    /\ PrintT("Network in sync!")
                    /\ pc' = [pc EXCEPT ![self] = "Done"]
                    /\ UNCHANGED << the_network, selected_remote_peer, 
@@ -766,8 +776,8 @@ CheckSync(self) == /\ pc[self] = "CheckSync"
                                    hashes, id, found_blocks, blocks, hashes_, 
                                    block_headers, local_peer_addr, inventory, 
                                    c, block_data, remote_peer_addr_, 
-                                   local_peer_addr_, remote_peer_addr_P, 
-                                   remote_peer, id_ >>
+                                   local_peer_addr_, id_, remote_peer_addr_P, 
+                                   remote_peer, id_P >>
 
 Peer(self) == Connect(self) \/ SelectPeerForRequestFromLocalPeer(self)
                  \/ RequestInventory(self) \/ RequestMoreBlocks(self)
