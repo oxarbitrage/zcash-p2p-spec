@@ -254,15 +254,12 @@ begin
                 end if;
             end while;
     CheckSync:
-        await Cardinality(the_network[1].blocks) = 4;
-        await Cardinality(the_network[id].blocks) = 4;
-
-        await the_network[id].chain_tip.height = 4;
+        await selected_remote_peer.chain_tip.height = the_network[id].chain_tip.height;
         print "Network in sync!";
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "a27a4f30" /\ chksum(tla) = "59542d01")
+\* BEGIN TRANSLATION (chksum(pcal) = "9478624" /\ chksum(tla) = "7cb51d11")
 \* Process variable remote_peer_addr of process client_task at line 177 col 11 changed to remote_peer_addr_
 \* Process variable local_peer_addr of process client_task at line 177 col 29 changed to local_peer_addr_
 \* Process variable id of process client_task at line 177 col 46 changed to id_
@@ -778,9 +775,7 @@ Sync(self) == /\ pc[self] = "Sync"
                               remote_peer_addr_P, id_P >>
 
 CheckSync(self) == /\ pc[self] = "CheckSync"
-                   /\ Cardinality(the_network[1].blocks) = 4
-                   /\ Cardinality(the_network[id_P[self]].blocks) = 4
-                   /\ the_network[id_P[self]].chain_tip.height = 4
+                   /\ selected_remote_peer.chain_tip.height = the_network[id_P[self]].chain_tip.height
                    /\ PrintT("Network in sync!")
                    /\ pc' = [pc EXCEPT ![self] = "Done"]
                    /\ UNCHANGED << the_network, selected_remote_peer, 
