@@ -1,4 +1,5 @@
 ---- MODULE Blockchain ----
+
 \* A simple blockchain model. *\
 PEERS == {
     [peer |-> "peer1", blocks |-> {
@@ -21,6 +22,7 @@ PEERS == {
     \*    chain_tip |-> 0 \* No blocks.
     \*]
 }
+
 ====
 
 EXTENDS Naturals, Sequences

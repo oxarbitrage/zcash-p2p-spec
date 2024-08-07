@@ -2,7 +2,7 @@
 LOCAL INSTANCE Naturals
 LOCAL INSTANCE Sequences
 LOCAL INSTANCE Utils
-CONSTANT the_network
+VARIABLE the_network
 
 \* Given a block collection and a hash, returns the block with the given hash.
 FindBlockByHash(block_collection, hash) == CHOOSE b \in block_collection : b.hash = hash
