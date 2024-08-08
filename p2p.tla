@@ -5,7 +5,7 @@ MaxGetBlocksInvResponse == 3
 
 MAX_PEERS == 2
 
-IDENTIFIER_DIFFERENCE_OF_PROCESSES == 1000
+DIFF_ID == 1000
 
 (*--algorithm p2p
 
@@ -136,7 +136,10 @@ begin
             c := c + 1;
         end while;
     UpdateTip: 
-        the_network := Ops!UpdatePeerTip(local_peer_addr, [height |-> block_data.height, hash |-> block_data.hash]);
+        the_network := Ops!UpdatePeerTip(local_peer_addr, [
+            height |-> block_data.height,
+            hash |-> block_data.hash
+        ]);
     return;
 end procedure;
 
@@ -183,18 +186,16 @@ begin
         goto Listening;
 end process;
 
-process Peer \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS)
-variables remote_peer_addr, id, remote_peer_height, ignore;
+process Peer \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS)
+variables remote_peer_addr, id = self - DIFF_ID, remote_peer_height, ignore;
 begin
     Connect:
-        id := self - IDENTIFIER_DIFFERENCE_OF_PROCESSES;
-
         local_peer_addr := the_network[id].peer;
         remote_peer_addr := "peer1";
         remote_peer_height := the_network[1].chain_tip.height;
     
         \* don't do it for the seeder peer.
-        await self > (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1);
+        await self > (DIFF_ID + 1);
 
         call create_connection(remote_peer_addr, local_peer_addr, id);
     SelectPeerForRequestFromLocalPeer:
@@ -222,12 +223,12 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "f4317b63" /\ chksum(tla) = "3839c292")
-\* Process variable remote_peer_addr of process client_task at line 145 col 11 changed to remote_peer_addr_
-\* Process variable local_peer_addr of process client_task at line 145 col 29 changed to local_peer_addr_
-\* Process variable id of process client_task at line 145 col 46 changed to id_
-\* Process variable remote_peer_addr of process Peer at line 187 col 11 changed to remote_peer_addr_P
-\* Process variable id of process Peer at line 187 col 29 changed to id_P
+\* BEGIN TRANSLATION (chksum(pcal) = "18b2732f" /\ chksum(tla) = "12ea4ecb")
+\* Process variable remote_peer_addr of process client_task at line 148 col 11 changed to remote_peer_addr_
+\* Process variable local_peer_addr of process client_task at line 148 col 29 changed to local_peer_addr_
+\* Process variable id of process client_task at line 148 col 46 changed to id_
+\* Process variable remote_peer_addr of process Peer at line 190 col 11 changed to remote_peer_addr_P
+\* Process variable id of process Peer at line 190 col 29 changed to id_P
 \* Procedure variable hashes of procedure build_inventory_message at line 83 col 19 changed to hashes_
 \* Parameter local_peer_addr of procedure create_connection at line 23 col 47 changed to local_peer_addr_c
 \* Parameter id of procedure create_connection at line 23 col 64 changed to id_c
@@ -250,7 +251,7 @@ vars == << the_network, selected_remote_peer, channels, pc, stack,
            hash_provided, height_to_start, remote_peer_addr_P, id_P, 
            remote_peer_height, ignore >>
 
-ProcSet == (1..MAX_PEERS) \cup ((IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS))
+ProcSet == (1..MAX_PEERS) \cup ((DIFF_ID + 1)..(DIFF_ID + MAX_PEERS))
 
 Init == (* Global variables *)
         /\ the_network = SubSeq(Reverse(SetToSeq(PEERS)), 1, MAX_PEERS)
@@ -280,13 +281,13 @@ Init == (* Global variables *)
         /\ hash_provided = [self \in 1..MAX_PEERS |-> defaultInitValue]
         /\ height_to_start = [self \in 1..MAX_PEERS |-> defaultInitValue]
         (* Process Peer *)
-        /\ remote_peer_addr_P = [self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS) |-> defaultInitValue]
-        /\ id_P = [self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS) |-> defaultInitValue]
-        /\ remote_peer_height = [self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS) |-> defaultInitValue]
-        /\ ignore = [self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS) |-> defaultInitValue]
+        /\ remote_peer_addr_P = [self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS) |-> defaultInitValue]
+        /\ id_P = [self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS) |-> self - DIFF_ID]
+        /\ remote_peer_height = [self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS) |-> defaultInitValue]
+        /\ ignore = [self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS) |-> defaultInitValue]
         /\ stack = [self \in ProcSet |-> << >>]
         /\ pc = [self \in ProcSet |-> CASE self \in 1..MAX_PEERS -> "Listening"
-                                        [] self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS) -> "Connect"]
+                                        [] self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS) -> "Connect"]
 
 VersionMessage(self) == /\ pc[self] = "VersionMessage"
                         /\ channels' = [channels EXCEPT ![id_c[self]] =                 [
@@ -470,7 +471,10 @@ IncorporateLoop(self) == /\ pc[self] = "IncorporateLoop"
                                          remote_peer_height, ignore >>
 
 UpdateTip(self) == /\ pc[self] = "UpdateTip"
-                   /\ the_network' = Ops!UpdatePeerTip(local_peer_addr[self], [height |-> block_data[self].height, hash |-> block_data[self].hash])
+                   /\ the_network' =                Ops!UpdatePeerTip(local_peer_addr[self], [
+                                         height |-> block_data[self].height,
+                                         hash |-> block_data[self].hash
+                                     ])
                    /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
                    /\ c' = [c EXCEPT ![self] = Head(stack[self]).c]
                    /\ block_data' = [block_data EXCEPT ![self] = Head(stack[self]).block_data]
@@ -490,9 +494,9 @@ incorporate_data_to_local_peer(self) == IncorporateLoop(self)
 
 Listening(self) == /\ pc[self] = "Listening"
                    /\ Assert(Len(the_network) >= id_[self], 
-                             "Failure of assertion at line 148, column 9.")
+                             "Failure of assertion at line 151, column 9.")
                    /\ Assert(Len(channels) >= id_[self], 
-                             "Failure of assertion at line 149, column 9.")
+                             "Failure of assertion at line 152, column 9.")
                    /\ IF channels[id_[self]].header = defaultInitValue
                          THEN /\ pc' = [pc EXCEPT ![self] = "Listening"]
                          ELSE /\ pc' = [pc EXCEPT ![self] = "Requests"]
@@ -623,12 +627,11 @@ client_task(self) == Listening(self) \/ Requests(self)
                         \/ ClientTaskLoop(self)
 
 Connect(self) == /\ pc[self] = "Connect"
-                 /\ id_P' = [id_P EXCEPT ![self] = self - IDENTIFIER_DIFFERENCE_OF_PROCESSES]
-                 /\ local_peer_addr' = [local_peer_addr EXCEPT ![self] = the_network[id_P'[self]].peer]
+                 /\ local_peer_addr' = [local_peer_addr EXCEPT ![self] = the_network[id_P[self]].peer]
                  /\ remote_peer_addr_P' = [remote_peer_addr_P EXCEPT ![self] = "peer1"]
                  /\ remote_peer_height' = [remote_peer_height EXCEPT ![self] = the_network[1].chain_tip.height]
-                 /\ self > (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)
-                 /\ /\ id_c' = [id_c EXCEPT ![self] = id_P'[self]]
+                 /\ self > (DIFF_ID + 1)
+                 /\ /\ id_c' = [id_c EXCEPT ![self] = id_P[self]]
                     /\ local_peer_addr_c' = [local_peer_addr_c EXCEPT ![self] = local_peer_addr'[self]]
                     /\ remote_peer_addr' = [remote_peer_addr EXCEPT ![self] = remote_peer_addr_P'[self]]
                     /\ stack' = [stack EXCEPT ![self] = << [ procedure |->  "create_connection",
@@ -642,7 +645,7 @@ Connect(self) == /\ pc[self] = "Connect"
                                  hashes, id, found_blocks, blocks, hashes_, 
                                  block_headers, inventory, c, block_data, 
                                  remote_peer_addr_, local_peer_addr_, id_, 
-                                 hash_provided, height_to_start, ignore >>
+                                 hash_provided, height_to_start, id_P, ignore >>
 
 SelectPeerForRequestFromLocalPeer(self) == /\ pc[self] = "SelectPeerForRequestFromLocalPeer"
                                            /\ Cardinality(the_network[id_P[self]].peer_set) > 0
@@ -742,7 +745,7 @@ Next == (\E self \in ProcSet:  \/ create_connection(self)
                                \/ process_inventory_message(self)
                                \/ incorporate_data_to_local_peer(self))
            \/ (\E self \in 1..MAX_PEERS: client_task(self))
-           \/ (\E self \in (IDENTIFIER_DIFFERENCE_OF_PROCESSES + 1)..(IDENTIFIER_DIFFERENCE_OF_PROCESSES + MAX_PEERS): Peer(self))
+           \/ (\E self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS): Peer(self))
            \/ Terminating
 
 Spec == Init /\ [][Next]_vars

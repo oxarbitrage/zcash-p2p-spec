@@ -35,7 +35,7 @@ UpdatePeerTip(peer_address, new_tip) == [i \in 1..Len(the_network) |->
 FindBlocks(block_collection, start_height, end_height) == 
     [b \in block_collection |-> b.height >= start_height /\ b.height <= end_height]
 
-\* Get the peer set of a peer given a peer address and the network state as a set.
+\* Get the peer a peer from the network given a peer address.
 GetPeerFromNetwork(peer_address) == CHOOSE peer \in ToSet(the_network) : peer.peer = peer_address
 
 ====
