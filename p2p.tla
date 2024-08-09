@@ -24,21 +24,11 @@ procedure create_connection(remote_peer_addr, local_peer_addr, id)
 begin
     VersionMessage:
         channels[id] := [
-            header |-> [
-                start_string |-> "f9beb4d9",
-                command_name |-> "version",
-                payload_size |-> 1,
-                checksum |-> "0x5df6e0e2"],
+            header |-> [command_name |-> "version"],
             payload |-> [
-                version |-> "70015",
-                services |-> "0x01",
-                timestamp |-> "",
                 addr_recv |-> local_peer_addr,
                 addr_trans |-> remote_peer_addr,
-                nonce |-> "",
-                user_agent |-> "",
-                start_height |-> Ops!GetPeerFromNetwork(remote_peer_addr).chain_tip.height,
-                relay |-> ""]
+                start_height |-> Ops!GetPeerFromNetwork(remote_peer_addr).chain_tip.height]
         ];
     return;
 end procedure;
@@ -48,11 +38,7 @@ procedure send_verack()
 begin
     VerackMessage:
         channels[self] := [
-            header |-> [
-                start_string |-> "f9beb4d9",
-                command_name |-> "verack", 
-                payload_size |-> 0,
-                checksum |-> "0x5df6e0e2"],
+            header |-> [command_name |-> "verack"],
             payload |-> defaultInitValue
         ];
     return;
@@ -63,13 +49,8 @@ procedure request_blocks(hashes, id)
 begin
     GetBlocksMessage:
         channels[id] := [
-            header |-> [
-                start_string |-> "f9beb4d9",
-                command_name |-> "getblocks", 
-                payload_size |-> 1,
-                checksum |-> "0x5df6e0e2"],
+            header |-> [command_name |-> "getblocks"],
             payload |-> [
-                version |-> "70015",
                 \* TODO: Here we should send the last hash the local peer has.
                 hash_count |-> Len(hashes),
                 block_header_hashes |-> hashes,
@@ -93,11 +74,7 @@ begin
         ];
     InventoryMessage:
         channels[self] := [
-            header |-> [
-                start_string |-> "f9beb4d9",
-                command_name |-> "inv", 
-                payload_size |-> 1,
-                checksum |-> "0x5df6e0e2"],
+            header |-> [command_name |-> "inv"],
             payload |-> [
                 count |-> Len(block_headers),
                 inventory |-> block_headers]
@@ -110,11 +87,7 @@ procedure process_inventory_message()
 begin
     GetDataMessage:
         \* Validate the inventory? For now we just pass it as it came so we just change the global message header.
-        channels[self].header := [
-            start_string |-> "f9beb4d9",
-            command_name |-> "getdata", 
-            payload_size |-> channels[self].payload.count,
-            checksum |-> "0x5df6e0e2"];
+        channels[self].header := [command_name |-> "getdata"];
     return;
 end procedure;
 
@@ -223,13 +196,13 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "18b2732f" /\ chksum(tla) = "12ea4ecb")
-\* Process variable remote_peer_addr of process client_task at line 148 col 11 changed to remote_peer_addr_
-\* Process variable local_peer_addr of process client_task at line 148 col 29 changed to local_peer_addr_
-\* Process variable id of process client_task at line 148 col 46 changed to id_
-\* Process variable remote_peer_addr of process Peer at line 190 col 11 changed to remote_peer_addr_P
-\* Process variable id of process Peer at line 190 col 29 changed to id_P
-\* Procedure variable hashes of procedure build_inventory_message at line 83 col 19 changed to hashes_
+\* BEGIN TRANSLATION (chksum(pcal) = "39fc82ff" /\ chksum(tla) = "23185957")
+\* Process variable remote_peer_addr of process client_task at line 121 col 11 changed to remote_peer_addr_
+\* Process variable local_peer_addr of process client_task at line 121 col 29 changed to local_peer_addr_
+\* Process variable id of process client_task at line 121 col 46 changed to id_
+\* Process variable remote_peer_addr of process Peer at line 163 col 11 changed to remote_peer_addr_P
+\* Process variable id of process Peer at line 163 col 29 changed to id_P
+\* Procedure variable hashes of procedure build_inventory_message at line 64 col 19 changed to hashes_
 \* Parameter local_peer_addr of procedure create_connection at line 23 col 47 changed to local_peer_addr_c
 \* Parameter id of procedure create_connection at line 23 col 64 changed to id_c
 CONSTANT defaultInitValue
@@ -291,21 +264,11 @@ Init == (* Global variables *)
 
 VersionMessage(self) == /\ pc[self] = "VersionMessage"
                         /\ channels' = [channels EXCEPT ![id_c[self]] =                 [
-                                                                            header |-> [
-                                                                                start_string |-> "f9beb4d9",
-                                                                                command_name |-> "version",
-                                                                                payload_size |-> 1,
-                                                                                checksum |-> "0x5df6e0e2"],
+                                                                            header |-> [command_name |-> "version"],
                                                                             payload |-> [
-                                                                                version |-> "70015",
-                                                                                services |-> "0x01",
-                                                                                timestamp |-> "",
                                                                                 addr_recv |-> local_peer_addr_c[self],
                                                                                 addr_trans |-> remote_peer_addr[self],
-                                                                                nonce |-> "",
-                                                                                user_agent |-> "",
-                                                                                start_height |-> Ops!GetPeerFromNetwork(remote_peer_addr[self]).chain_tip.height,
-                                                                                relay |-> ""]
+                                                                                start_height |-> Ops!GetPeerFromNetwork(remote_peer_addr[self]).chain_tip.height]
                                                                         ]]
                         /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
                         /\ remote_peer_addr' = [remote_peer_addr EXCEPT ![self] = Head(stack[self]).remote_peer_addr]
@@ -325,11 +288,7 @@ create_connection(self) == VersionMessage(self)
 
 VerackMessage(self) == /\ pc[self] = "VerackMessage"
                        /\ channels' = [channels EXCEPT ![self] =                   [
-                                                                     header |-> [
-                                                                         start_string |-> "f9beb4d9",
-                                                                         command_name |-> "verack",
-                                                                         payload_size |-> 0,
-                                                                         checksum |-> "0x5df6e0e2"],
+                                                                     header |-> [command_name |-> "verack"],
                                                                      payload |-> defaultInitValue
                                                                  ]]
                        /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
@@ -348,13 +307,8 @@ send_verack(self) == VerackMessage(self)
 
 GetBlocksMessage(self) == /\ pc[self] = "GetBlocksMessage"
                           /\ channels' = [channels EXCEPT ![id[self]] =                 [
-                                                                            header |-> [
-                                                                                start_string |-> "f9beb4d9",
-                                                                                command_name |-> "getblocks",
-                                                                                payload_size |-> 1,
-                                                                                checksum |-> "0x5df6e0e2"],
+                                                                            header |-> [command_name |-> "getblocks"],
                                                                             payload |-> [
-                                                                                version |-> "70015",
                                                                         
                                                                                 hash_count |-> Len(hashes[self]),
                                                                                 block_header_hashes |-> hashes[self],
@@ -399,11 +353,7 @@ ProcessForInventory(self) == /\ pc[self] = "ProcessForInventory"
 
 InventoryMessage(self) == /\ pc[self] = "InventoryMessage"
                           /\ channels' = [channels EXCEPT ![self] =                   [
-                                                                        header |-> [
-                                                                            start_string |-> "f9beb4d9",
-                                                                            command_name |-> "inv",
-                                                                            payload_size |-> 1,
-                                                                            checksum |-> "0x5df6e0e2"],
+                                                                        header |-> [command_name |-> "inv"],
                                                                         payload |-> [
                                                                             count |-> Len(block_headers[self]),
                                                                             inventory |-> block_headers[self]]
@@ -427,11 +377,7 @@ build_inventory_message(self) == ProcessForInventory(self)
                                     \/ InventoryMessage(self)
 
 GetDataMessage(self) == /\ pc[self] = "GetDataMessage"
-                        /\ channels' = [channels EXCEPT ![self].header =                      [
-                                                                         start_string |-> "f9beb4d9",
-                                                                         command_name |-> "getdata",
-                                                                         payload_size |-> channels[self].payload.count,
-                                                                         checksum |-> "0x5df6e0e2"]]
+                        /\ channels' = [channels EXCEPT ![self].header = [command_name |-> "getdata"]]
                         /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
                         /\ stack' = [stack EXCEPT ![self] = Tail(stack[self])]
                         /\ UNCHANGED << the_network, selected_remote_peer, 
@@ -450,7 +396,7 @@ IncorporateLoop(self) == /\ pc[self] = "IncorporateLoop"
                          /\ IF c[self] <= Len(channels[self].payload.inventory)
                                THEN /\ block_data' = [block_data EXCEPT ![self] = Ops!FindBlockByHash(selected_remote_peer.blocks, channels[self].payload.inventory[c[self]].hash)]
                                     /\ Assert(block_data'[self].hash = channels[self].payload.inventory[c[self]].hash, 
-                                              "Failure of assertion at line 129, column 13.")
+                                              "Failure of assertion at line 102, column 13.")
                                     /\ the_network' =                Ops!UpdatePeerBlocks(local_peer_addr[self], [
                                                           height |-> block_data'[self].height,
                                                           hash |-> block_data'[self].hash,
@@ -494,9 +440,9 @@ incorporate_data_to_local_peer(self) == IncorporateLoop(self)
 
 Listening(self) == /\ pc[self] = "Listening"
                    /\ Assert(Len(the_network) >= id_[self], 
-                             "Failure of assertion at line 151, column 9.")
+                             "Failure of assertion at line 124, column 9.")
                    /\ Assert(Len(channels) >= id_[self], 
-                             "Failure of assertion at line 152, column 9.")
+                             "Failure of assertion at line 125, column 9.")
                    /\ IF channels[id_[self]].header = defaultInitValue
                          THEN /\ pc' = [pc EXCEPT ![self] = "Listening"]
                          ELSE /\ pc' = [pc EXCEPT ![self] = "Requests"]
