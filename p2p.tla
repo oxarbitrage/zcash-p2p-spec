@@ -26,6 +26,7 @@ begin
             payload |-> [
                 addr_recv |-> local_peer_addr,
                 addr_trans |-> remote_peer_addr,
+                \* We are allowed to do this because this message is sent from the remote_peer.
                 start_height |-> Ops!GetPeerFromNetwork(remote_peer_addr).chain_tip.height]
         ];
     return;
@@ -36,7 +37,7 @@ begin
     HandleVersionMessage:
         local_peer_addr := channels[self].payload.addr_recv;
         remote_peer_addr := channels[self].payload.addr_trans;
-        \* Add the remote peer to the local peer set.
+        \* Add the remote peer to the local peer set, the connection is not established yet.
         the_network[self].peer_set := Append(the_network[self].peer_set, [
             address |-> remote_peer_addr,
             tip |-> channels[self].payload.start_height,
@@ -53,7 +54,6 @@ end procedure;
 procedure verack()
 begin
     HandleVerackMessage:
-        await local_peer_addr # defaultInitValue /\ remote_peer_addr # defaultInitValue;
         \* Mark the connection as established.
         the_network[self].peer_set[1].established := TRUE;
     return;
@@ -63,8 +63,8 @@ procedure getblocks()
 variables remote_peer_blocks, found_blocks, hash_provided, height_to_start;
 begin
     HandleGetBlocksMessage:
-        \* Get the blocks from the first available peer.
         await Len(the_network[self].peer_set) > 0;
+        \* The remote peer is the one creating this message so it is legal to access its blocks. 
         remote_peer_blocks := Ops!GetPeerFromNetwork(the_network[self].peer_set[1].address).blocks;
 
         if channels[self].payload.hash_count = 0 then
@@ -99,7 +99,6 @@ begin
         channels[id] := [
             header |-> [command_name |-> "getblocks"],
             payload |-> [
-                \* TODO: Here we should send the last hash the local peer has.
                 hash_count |-> Len(hashes),
                 block_header_hashes |-> hashes,
                 stop_hash |-> "0"]
@@ -111,16 +110,15 @@ end procedure;
 procedure inv()
 begin
     SendGetDataMessage:
-        \* Validate the inventory? For now we just pass it as it came so we just change the global message header.
+        \* TODO: Validate the inventory? For now we just pass the payload to `getdata`.
         channels[self].header := [command_name |-> "getdata"];
     return;
 end procedure;
 
 \* Incorporate data to the local peer from the inventory received.
 procedure getdata()
-variables c = 1, block_data, current_item;
+variables block_data, current_item;
 begin
-    \* Here we are sure the selected peer has the requested blocks.
     IncorporateLoop:
         while Len(channels[self].payload.inventory) > 0 do
             current_item := Head(channels[self].payload.inventory);
@@ -177,7 +175,7 @@ begin
 end process;
 
 process Peer \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS)
-variables local_peer_addr, remote_peer_addr, id = self - DIFF_ID, remote_peer_height;
+variables local_peer_addr, remote_peer_addr, id = self - DIFF_ID;
 begin
     Connect:
         local_peer_addr := the_network[id].peer;
@@ -209,10 +207,10 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "896836ca" /\ chksum(tla) = "36d52d6d")
-\* Process variable local_peer_addr of process Peer at line 180 col 11 changed to local_peer_addr_
-\* Process variable remote_peer_addr of process Peer at line 180 col 28 changed to remote_peer_addr_
-\* Process variable id of process Peer at line 180 col 46 changed to id_
+\* BEGIN TRANSLATION (chksum(pcal) = "a7723241" /\ chksum(tla) = "44e98172")
+\* Process variable local_peer_addr of process Peer at line 178 col 11 changed to local_peer_addr_
+\* Process variable remote_peer_addr of process Peer at line 178 col 28 changed to remote_peer_addr_
+\* Process variable id of process Peer at line 178 col 46 changed to id_
 \* Parameter id of procedure connect at line 21 col 54 changed to id_c
 CONSTANT defaultInitValue
 VARIABLES the_network, channels, pc, stack
@@ -221,15 +219,14 @@ VARIABLES the_network, channels, pc, stack
 LOCAL Ops == INSTANCE Operators
 
 VARIABLES remote_peer_addr, local_peer_addr, id_c, remote_peer_blocks, 
-          found_blocks, hash_provided, height_to_start, hashes, id, c, 
+          found_blocks, hash_provided, height_to_start, hashes, id, 
           block_data, current_item, command, local_peer_addr_, 
-          remote_peer_addr_, id_, remote_peer_height
+          remote_peer_addr_, id_
 
 vars == << the_network, channels, pc, stack, remote_peer_addr, 
            local_peer_addr, id_c, remote_peer_blocks, found_blocks, 
-           hash_provided, height_to_start, hashes, id, c, block_data, 
-           current_item, command, local_peer_addr_, remote_peer_addr_, id_, 
-           remote_peer_height >>
+           hash_provided, height_to_start, hashes, id, block_data, 
+           current_item, command, local_peer_addr_, remote_peer_addr_, id_ >>
 
 ProcSet == (1..MAX_PEERS) \cup ((DIFF_ID + 1)..(DIFF_ID + MAX_PEERS))
 
@@ -249,7 +246,6 @@ Init == (* Global variables *)
         /\ hashes = [ self \in ProcSet |-> defaultInitValue]
         /\ id = [ self \in ProcSet |-> defaultInitValue]
         (* Procedure getdata *)
-        /\ c = [ self \in ProcSet |-> 1]
         /\ block_data = [ self \in ProcSet |-> defaultInitValue]
         /\ current_item = [ self \in ProcSet |-> defaultInitValue]
         (* Process client_task *)
@@ -258,7 +254,6 @@ Init == (* Global variables *)
         /\ local_peer_addr_ = [self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS) |-> defaultInitValue]
         /\ remote_peer_addr_ = [self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS) |-> defaultInitValue]
         /\ id_ = [self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS) |-> self - DIFF_ID]
-        /\ remote_peer_height = [self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS) |-> defaultInitValue]
         /\ stack = [self \in ProcSet |-> << >>]
         /\ pc = [self \in ProcSet |-> CASE self \in 1..MAX_PEERS -> "Listening"
                                         [] self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS) -> "Connect"]
@@ -269,6 +264,7 @@ SendVersionMessage(self) == /\ pc[self] = "SendVersionMessage"
                                                                                 payload |-> [
                                                                                     addr_recv |-> local_peer_addr[self],
                                                                                     addr_trans |-> remote_peer_addr[self],
+                                                                            
                                                                                     start_height |-> Ops!GetPeerFromNetwork(remote_peer_addr[self]).chain_tip.height]
                                                                             ]]
                             /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
@@ -278,11 +274,10 @@ SendVersionMessage(self) == /\ pc[self] = "SendVersionMessage"
                             /\ stack' = [stack EXCEPT ![self] = Tail(stack[self])]
                             /\ UNCHANGED << the_network, remote_peer_blocks, 
                                             found_blocks, hash_provided, 
-                                            height_to_start, hashes, id, c, 
+                                            height_to_start, hashes, id, 
                                             block_data, current_item, command, 
                                             local_peer_addr_, 
-                                            remote_peer_addr_, id_, 
-                                            remote_peer_height >>
+                                            remote_peer_addr_, id_ >>
 
 connect(self) == SendVersionMessage(self)
 
@@ -298,11 +293,10 @@ HandleVersionMessage(self) == /\ pc[self] = "HandleVersionMessage"
                               /\ UNCHANGED << channels, stack, id_c, 
                                               remote_peer_blocks, found_blocks, 
                                               hash_provided, height_to_start, 
-                                              hashes, id, c, block_data, 
+                                              hashes, id, block_data, 
                                               current_item, command, 
                                               local_peer_addr_, 
-                                              remote_peer_addr_, id_, 
-                                              remote_peer_height >>
+                                              remote_peer_addr_, id_ >>
 
 SendVerackMessage(self) == /\ pc[self] = "SendVerackMessage"
                            /\ channels' = [channels EXCEPT ![self] =                   [
@@ -315,15 +309,14 @@ SendVerackMessage(self) == /\ pc[self] = "SendVerackMessage"
                                            local_peer_addr, id_c, 
                                            remote_peer_blocks, found_blocks, 
                                            hash_provided, height_to_start, 
-                                           hashes, id, c, block_data, 
+                                           hashes, id, block_data, 
                                            current_item, command, 
                                            local_peer_addr_, remote_peer_addr_, 
-                                           id_, remote_peer_height >>
+                                           id_ >>
 
 version(self) == HandleVersionMessage(self) \/ SendVerackMessage(self)
 
 HandleVerackMessage(self) == /\ pc[self] = "HandleVerackMessage"
-                             /\ local_peer_addr[self] # defaultInitValue /\ remote_peer_addr[self] # defaultInitValue
                              /\ the_network' = [the_network EXCEPT ![self].peer_set[1].established = TRUE]
                              /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
                              /\ stack' = [stack EXCEPT ![self] = Tail(stack[self])]
@@ -331,11 +324,10 @@ HandleVerackMessage(self) == /\ pc[self] = "HandleVerackMessage"
                                              local_peer_addr, id_c, 
                                              remote_peer_blocks, found_blocks, 
                                              hash_provided, height_to_start, 
-                                             hashes, id, c, block_data, 
+                                             hashes, id, block_data, 
                                              current_item, command, 
                                              local_peer_addr_, 
-                                             remote_peer_addr_, id_, 
-                                             remote_peer_height >>
+                                             remote_peer_addr_, id_ >>
 
 verack(self) == HandleVerackMessage(self)
 
@@ -353,11 +345,9 @@ HandleGetBlocksMessage(self) == /\ pc[self] = "HandleGetBlocksMessage"
                                 /\ UNCHANGED << the_network, channels, stack, 
                                                 remote_peer_addr, 
                                                 local_peer_addr, id_c, hashes, 
-                                                id, c, block_data, 
-                                                current_item, command, 
-                                                local_peer_addr_, 
-                                                remote_peer_addr_, id_, 
-                                                remote_peer_height >>
+                                                id, block_data, current_item, 
+                                                command, local_peer_addr_, 
+                                                remote_peer_addr_, id_ >>
 
 SendInvMessage(self) == /\ pc[self] = "SendInvMessage"
                         /\ channels' = [channels EXCEPT ![self] =                   [
@@ -379,10 +369,10 @@ SendInvMessage(self) == /\ pc[self] = "SendInvMessage"
                         /\ height_to_start' = [height_to_start EXCEPT ![self] = Head(stack[self]).height_to_start]
                         /\ stack' = [stack EXCEPT ![self] = Tail(stack[self])]
                         /\ UNCHANGED << the_network, remote_peer_addr, 
-                                        local_peer_addr, id_c, hashes, id, c, 
+                                        local_peer_addr, id_c, hashes, id, 
                                         block_data, current_item, command, 
                                         local_peer_addr_, remote_peer_addr_, 
-                                        id_, remote_peer_height >>
+                                        id_ >>
 
 getblocks(self) == HandleGetBlocksMessage(self) \/ SendInvMessage(self)
 
@@ -390,7 +380,6 @@ SendGetBlocksMessage(self) == /\ pc[self] = "SendGetBlocksMessage"
                               /\ channels' = [channels EXCEPT ![id[self]] =                 [
                                                                                 header |-> [command_name |-> "getblocks"],
                                                                                 payload |-> [
-                                                                            
                                                                                     hash_count |-> Len(hashes[self]),
                                                                                     block_header_hashes |-> hashes[self],
                                                                                     stop_hash |-> "0"]
@@ -403,10 +392,9 @@ SendGetBlocksMessage(self) == /\ pc[self] = "SendGetBlocksMessage"
                                               local_peer_addr, id_c, 
                                               remote_peer_blocks, found_blocks, 
                                               hash_provided, height_to_start, 
-                                              c, block_data, current_item, 
+                                              block_data, current_item, 
                                               command, local_peer_addr_, 
-                                              remote_peer_addr_, id_, 
-                                              remote_peer_height >>
+                                              remote_peer_addr_, id_ >>
 
 request_blocks(self) == SendGetBlocksMessage(self)
 
@@ -418,11 +406,10 @@ SendGetDataMessage(self) == /\ pc[self] = "SendGetDataMessage"
                                             local_peer_addr, id_c, 
                                             remote_peer_blocks, found_blocks, 
                                             hash_provided, height_to_start, 
-                                            hashes, id, c, block_data, 
+                                            hashes, id, block_data, 
                                             current_item, command, 
                                             local_peer_addr_, 
-                                            remote_peer_addr_, id_, 
-                                            remote_peer_height >>
+                                            remote_peer_addr_, id_ >>
 
 inv(self) == SendGetDataMessage(self)
 
@@ -434,7 +421,7 @@ IncorporateLoop(self) == /\ pc[self] = "IncorporateLoop"
                                                                                       current_item'[self].hash
                                                                                   )]
                                     /\ Assert(block_data'[self].hash = current_item'[self].hash, 
-                                              "Failure of assertion at line 131, column 13.")
+                                              "Failure of assertion at line 129, column 13.")
                                     /\ the_network' =                Ops!UpdatePeerBlocks(the_network[self].peer, [
                                                           height |-> block_data'[self].height,
                                                           hash |-> block_data'[self].hash,
@@ -449,9 +436,8 @@ IncorporateLoop(self) == /\ pc[self] = "IncorporateLoop"
                                          local_peer_addr, id_c, 
                                          remote_peer_blocks, found_blocks, 
                                          hash_provided, height_to_start, 
-                                         hashes, id, c, command, 
-                                         local_peer_addr_, remote_peer_addr_, 
-                                         id_, remote_peer_height >>
+                                         hashes, id, command, local_peer_addr_, 
+                                         remote_peer_addr_, id_ >>
 
 UpdateTip(self) == /\ pc[self] = "UpdateTip"
                    /\ the_network' = [the_network EXCEPT ![self].chain_tip =                                [
@@ -459,7 +445,6 @@ UpdateTip(self) == /\ pc[self] = "UpdateTip"
                                                                                  hash |-> block_data[self].hash
                                                                              ]]
                    /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
-                   /\ c' = [c EXCEPT ![self] = Head(stack[self]).c]
                    /\ block_data' = [block_data EXCEPT ![self] = Head(stack[self]).block_data]
                    /\ current_item' = [current_item EXCEPT ![self] = Head(stack[self]).current_item]
                    /\ stack' = [stack EXCEPT ![self] = Tail(stack[self])]
@@ -467,13 +452,13 @@ UpdateTip(self) == /\ pc[self] = "UpdateTip"
                                    id_c, remote_peer_blocks, found_blocks, 
                                    hash_provided, height_to_start, hashes, id, 
                                    command, local_peer_addr_, 
-                                   remote_peer_addr_, id_, remote_peer_height >>
+                                   remote_peer_addr_, id_ >>
 
 getdata(self) == IncorporateLoop(self) \/ UpdateTip(self)
 
 Listening(self) == /\ pc[self] = "Listening"
                    /\ Assert(Len(the_network) >= self /\ Len(channels) >= self, 
-                             "Failure of assertion at line 154, column 9.")
+                             "Failure of assertion at line 152, column 9.")
                    /\ IF channels[self].header = defaultInitValue
                          THEN /\ pc' = [pc EXCEPT ![self] = "Listening"]
                          ELSE /\ pc' = [pc EXCEPT ![self] = "Requests"]
@@ -481,9 +466,8 @@ Listening(self) == /\ pc[self] = "Listening"
                                    remote_peer_addr, local_peer_addr, id_c, 
                                    remote_peer_blocks, found_blocks, 
                                    hash_provided, height_to_start, hashes, id, 
-                                   c, block_data, current_item, command, 
-                                   local_peer_addr_, remote_peer_addr_, id_, 
-                                   remote_peer_height >>
+                                   block_data, current_item, command, 
+                                   local_peer_addr_, remote_peer_addr_, id_ >>
 
 Requests(self) == /\ pc[self] = "Requests"
                   /\ command' = [command EXCEPT ![self] = channels[self].header.command_name]
@@ -493,7 +477,7 @@ Requests(self) == /\ pc[self] = "Requests"
                                                                   \o stack[self]]
                              /\ pc' = [pc EXCEPT ![self] = "HandleVersionMessage"]
                              /\ UNCHANGED << remote_peer_blocks, found_blocks, 
-                                             hash_provided, height_to_start, c, 
+                                             hash_provided, height_to_start, 
                                              block_data, current_item >>
                         ELSE /\ IF command'[self] = "verack"
                                    THEN /\ stack' = [stack EXCEPT ![self] = << [ procedure |->  "verack",
@@ -503,7 +487,7 @@ Requests(self) == /\ pc[self] = "Requests"
                                         /\ UNCHANGED << remote_peer_blocks, 
                                                         found_blocks, 
                                                         hash_provided, 
-                                                        height_to_start, c, 
+                                                        height_to_start, 
                                                         block_data, 
                                                         current_item >>
                                    ELSE /\ IF command'[self] = "getblocks"
@@ -519,31 +503,26 @@ Requests(self) == /\ pc[self] = "Requests"
                                                    /\ hash_provided' = [hash_provided EXCEPT ![self] = defaultInitValue]
                                                    /\ height_to_start' = [height_to_start EXCEPT ![self] = defaultInitValue]
                                                    /\ pc' = [pc EXCEPT ![self] = "HandleGetBlocksMessage"]
-                                                   /\ UNCHANGED << c, 
-                                                                   block_data, 
+                                                   /\ UNCHANGED << block_data, 
                                                                    current_item >>
                                               ELSE /\ IF command'[self] = "inv"
                                                          THEN /\ stack' = [stack EXCEPT ![self] = << [ procedure |->  "inv",
                                                                                                        pc        |->  "Listening" ] >>
                                                                                                    \o stack[self]]
                                                               /\ pc' = [pc EXCEPT ![self] = "SendGetDataMessage"]
-                                                              /\ UNCHANGED << c, 
-                                                                              block_data, 
+                                                              /\ UNCHANGED << block_data, 
                                                                               current_item >>
                                                          ELSE /\ IF command'[self] = "getdata"
                                                                     THEN /\ stack' = [stack EXCEPT ![self] = << [ procedure |->  "getdata",
                                                                                                                   pc        |->  "ClientTaskLoop",
-                                                                                                                  c         |->  c[self],
                                                                                                                   block_data |->  block_data[self],
                                                                                                                   current_item |->  current_item[self] ] >>
                                                                                                               \o stack[self]]
-                                                                         /\ c' = [c EXCEPT ![self] = 1]
                                                                          /\ block_data' = [block_data EXCEPT ![self] = defaultInitValue]
                                                                          /\ current_item' = [current_item EXCEPT ![self] = defaultInitValue]
                                                                          /\ pc' = [pc EXCEPT ![self] = "IncorporateLoop"]
                                                                     ELSE /\ pc' = [pc EXCEPT ![self] = "ClientTaskLoop"]
                                                                          /\ UNCHANGED << stack, 
-                                                                                         c, 
                                                                                          block_data, 
                                                                                          current_item >>
                                                    /\ UNCHANGED << remote_peer_blocks, 
@@ -552,8 +531,7 @@ Requests(self) == /\ pc[self] = "Requests"
                                                                    height_to_start >>
                   /\ UNCHANGED << the_network, channels, remote_peer_addr, 
                                   local_peer_addr, id_c, hashes, id, 
-                                  local_peer_addr_, remote_peer_addr_, id_, 
-                                  remote_peer_height >>
+                                  local_peer_addr_, remote_peer_addr_, id_ >>
 
 ClientTaskLoop(self) == /\ pc[self] = "ClientTaskLoop"
                         /\ channels' = [channels EXCEPT ![self] = [header |-> defaultInitValue, payload |-> defaultInitValue]]
@@ -562,10 +540,9 @@ ClientTaskLoop(self) == /\ pc[self] = "ClientTaskLoop"
                                         local_peer_addr, id_c, 
                                         remote_peer_blocks, found_blocks, 
                                         hash_provided, height_to_start, hashes, 
-                                        id, c, block_data, current_item, 
-                                        command, local_peer_addr_, 
-                                        remote_peer_addr_, id_, 
-                                        remote_peer_height >>
+                                        id, block_data, current_item, command, 
+                                        local_peer_addr_, remote_peer_addr_, 
+                                        id_ >>
 
 client_task(self) == Listening(self) \/ Requests(self)
                         \/ ClientTaskLoop(self)
@@ -586,8 +563,8 @@ Connect(self) == /\ pc[self] = "Connect"
                  /\ pc' = [pc EXCEPT ![self] = "SendVersionMessage"]
                  /\ UNCHANGED << the_network, channels, remote_peer_blocks, 
                                  found_blocks, hash_provided, height_to_start, 
-                                 hashes, id, c, block_data, current_item, 
-                                 command, id_, remote_peer_height >>
+                                 hashes, id, block_data, current_item, command, 
+                                 id_ >>
 
 CheckConnectionEstablished(self) == /\ pc[self] = "CheckConnectionEstablished"
                                     /\   Len(the_network[id_[self]].peer_set) > 0
@@ -601,11 +578,10 @@ CheckConnectionEstablished(self) == /\ pc[self] = "CheckConnectionEstablished"
                                                     found_blocks, 
                                                     hash_provided, 
                                                     height_to_start, hashes, 
-                                                    id, c, block_data, 
+                                                    id, block_data, 
                                                     current_item, command, 
                                                     local_peer_addr_, 
-                                                    remote_peer_addr_, id_, 
-                                                    remote_peer_height >>
+                                                    remote_peer_addr_, id_ >>
 
 RequestInventory(self) == /\ pc[self] = "RequestInventory"
                           /\   the_network[id_[self]].peer_set[1].tip # defaultInitValue
@@ -615,10 +591,10 @@ RequestInventory(self) == /\ pc[self] = "RequestInventory"
                                           remote_peer_addr, local_peer_addr, 
                                           id_c, remote_peer_blocks, 
                                           found_blocks, hash_provided, 
-                                          height_to_start, hashes, id, c, 
+                                          height_to_start, hashes, id, 
                                           block_data, current_item, command, 
                                           local_peer_addr_, remote_peer_addr_, 
-                                          id_, remote_peer_height >>
+                                          id_ >>
 
 Sync(self) == /\ pc[self] = "Sync"
               /\ IF the_network[id_[self]].chain_tip.height < the_network[id_[self]].peer_set[1].tip
@@ -644,10 +620,9 @@ Sync(self) == /\ pc[self] = "Sync"
                          /\ UNCHANGED << stack, hashes, id >>
               /\ UNCHANGED << the_network, channels, remote_peer_addr, 
                               local_peer_addr, id_c, remote_peer_blocks, 
-                              found_blocks, hash_provided, height_to_start, c, 
+                              found_blocks, hash_provided, height_to_start, 
                               block_data, current_item, command, 
-                              local_peer_addr_, remote_peer_addr_, id_, 
-                              remote_peer_height >>
+                              local_peer_addr_, remote_peer_addr_, id_ >>
 
 CheckSync(self) == /\ pc[self] = "CheckSync"
                    /\ the_network[id_[self]].peer_set[1].tip = the_network[id_[self]].chain_tip.height
@@ -657,9 +632,8 @@ CheckSync(self) == /\ pc[self] = "CheckSync"
                                    remote_peer_addr, local_peer_addr, id_c, 
                                    remote_peer_blocks, found_blocks, 
                                    hash_provided, height_to_start, hashes, id, 
-                                   c, block_data, current_item, command, 
-                                   local_peer_addr_, remote_peer_addr_, id_, 
-                                   remote_peer_height >>
+                                   block_data, current_item, command, 
+                                   local_peer_addr_, remote_peer_addr_, id_ >>
 
 Peer(self) == Connect(self) \/ CheckConnectionEstablished(self)
                  \/ RequestInventory(self) \/ Sync(self) \/ CheckSync(self)
