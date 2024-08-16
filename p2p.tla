@@ -3,21 +3,20 @@ EXTENDS TLC, Sequences, Naturals, FiniteSets, Utils, Blockchain
 
 MaxGetBlocksInvResponse == 3
 
-MAX_PEERS == 2
-
-DIFF_ID == 1000
+\* Difference in the process identifier so that it does not conflict with the existing task processes.
+PeerProcessDiffId == 1000
 
 (*--algorithm p2p
 
 variables
-    the_network = SubSeq(Reverse(SetToSeq(PEERS)), 1, MAX_PEERS);
+    the_network = PEERS;
 
-    channels = [i \in 1..MAX_PEERS |-> [header |-> defaultInitValue, payload |-> defaultInitValue]]
+    channels = [i \in 1..Len(PEERS) |-> [header |-> defaultInitValue, payload |-> defaultInitValue]]
 define
     LOCAL Ops == INSTANCE Operators
 end define;
 
-\* ...
+\* Announce the intention of a peer to connect with another in the network by sending an `addr` message.
 procedure announce(id)
 begin
     SendAddrMessage:
@@ -31,7 +30,7 @@ begin
     return;
 end procedure;
 
-\* Create a connection between the remote and local peer.
+\* Given that an `addr` message is received, send a `version` message to start the connection.
 procedure addr()
 begin
     SendVersionMessage:
@@ -46,6 +45,7 @@ begin
     return;
 end procedure;
 
+\* Given a `version` message was received, send `verack` to acknowledge the connection.
 procedure version()
 begin
     HandleVersionMessage:
@@ -58,6 +58,7 @@ begin
     return;
 end procedure;
 
+\* Given a `verack` message wa received, establish the connection.
 procedure verack()
 begin
     HandleVerackMessage:
@@ -75,9 +76,7 @@ begin
         remote_peer_blocks := Ops!GetPeerFromNetwork(the_network[self].peer_set[1].address).blocks;
 
         if channels[self].payload.hash_count = 0 then
-            \* TODO: This is dirty but correct in some sense, it will build inventory with the 
-            \* first `MaxGetBlocksInvResponse` blocks.
-            found_blocks := Ops!FindBlocks(remote_peer_blocks, 1, 1 + (MaxGetBlocksInvResponse - 1));
+            found_blocks := Ops!FindBlocks(remote_peer_blocks, 1, MaxGetBlocksInvResponse);
         else
             hash_provided := channels[self].payload.block_header_hashes;
             height_to_start := Ops!FindBlockByHash(remote_peer_blocks, hash_provided).height + 1;
@@ -107,8 +106,7 @@ begin
             header |-> [command_name |-> "getblocks"],
             payload |-> [
                 hash_count |-> Len(hashes),
-                block_header_hashes |-> hashes,
-                stop_hash |-> "0"]
+                block_header_hashes |-> hashes]
         ];
     return;
 end procedure;
@@ -152,7 +150,7 @@ begin
 end procedure;
 
 \* Peer Client Task
-process client_task \in 1..MAX_PEERS
+process client_task \in 1 .. Len(PEERS)
 variables command;
 begin
     Listening:
@@ -171,7 +169,7 @@ begin
         elsif command = "verack" then
             call verack();
         elsif command = "getblocks" then
-            call getblocks(); 
+            call getblocks();
             goto Listening;
         elsif command = "inv" then
             call inv();
@@ -184,8 +182,8 @@ begin
         goto Listening;
 end process;
 
-process Peer \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS)
-variables id = self - DIFF_ID;
+process Peer \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS)
+variables id = self - PeerProcessDiffId;
 begin
     Announce:
         \* Only one peer in the peer set is currently supported.
@@ -213,9 +211,9 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "142a720f" /\ chksum(tla) = "f398785e")
-\* Process variable id of process Peer at line 188 col 11 changed to id_
-\* Parameter id of procedure announce at line 21 col 20 changed to id_a
+\* BEGIN TRANSLATION (chksum(pcal) = "b6ef090b" /\ chksum(tla) = "69383b8")
+\* Process variable id of process Peer at line 186 col 11 changed to id_
+\* Parameter id of procedure announce at line 20 col 20 changed to id_a
 CONSTANT defaultInitValue
 VARIABLES the_network, channels, pc, stack
 
@@ -229,11 +227,11 @@ vars == << the_network, channels, pc, stack, id_a, remote_peer_blocks,
            found_blocks, hash_provided, height_to_start, hashes, id, 
            block_data, current_item, command, id_ >>
 
-ProcSet == (1..MAX_PEERS) \cup ((DIFF_ID + 1)..(DIFF_ID + MAX_PEERS))
+ProcSet == (1 .. Len(PEERS)) \cup (PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS))
 
 Init == (* Global variables *)
-        /\ the_network = SubSeq(Reverse(SetToSeq(PEERS)), 1, MAX_PEERS)
-        /\ channels = [i \in 1..MAX_PEERS |-> [header |-> defaultInitValue, payload |-> defaultInitValue]]
+        /\ the_network = PEERS
+        /\ channels = [i \in 1..Len(PEERS) |-> [header |-> defaultInitValue, payload |-> defaultInitValue]]
         (* Procedure announce *)
         /\ id_a = [ self \in ProcSet |-> defaultInitValue]
         (* Procedure getblocks *)
@@ -248,12 +246,12 @@ Init == (* Global variables *)
         /\ block_data = [ self \in ProcSet |-> defaultInitValue]
         /\ current_item = [ self \in ProcSet |-> defaultInitValue]
         (* Process client_task *)
-        /\ command = [self \in 1..MAX_PEERS |-> defaultInitValue]
+        /\ command = [self \in 1 .. Len(PEERS) |-> defaultInitValue]
         (* Process Peer *)
-        /\ id_ = [self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS) |-> self - DIFF_ID]
+        /\ id_ = [self \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS) |-> self - PeerProcessDiffId]
         /\ stack = [self \in ProcSet |-> << >>]
-        /\ pc = [self \in ProcSet |-> CASE self \in 1..MAX_PEERS -> "Listening"
-                                        [] self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS) -> "Announce"]
+        /\ pc = [self \in ProcSet |-> CASE self \in 1 .. Len(PEERS) -> "Listening"
+                                        [] self \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS) -> "Announce"]
 
 SendAddrMessage(self) == /\ pc[self] = "SendAddrMessage"
                          /\ channels' = [channels EXCEPT ![id_a[self]] =                 [
@@ -333,7 +331,7 @@ HandleGetBlocksMessage(self) == /\ pc[self] = "HandleGetBlocksMessage"
                                 /\ Len(the_network[self].peer_set) > 0
                                 /\ remote_peer_blocks' = [remote_peer_blocks EXCEPT ![self] = Ops!GetPeerFromNetwork(the_network[self].peer_set[1].address).blocks]
                                 /\ IF channels[self].payload.hash_count = 0
-                                      THEN /\ found_blocks' = [found_blocks EXCEPT ![self] = Ops!FindBlocks(remote_peer_blocks'[self], 1, 1 + (MaxGetBlocksInvResponse - 1))]
+                                      THEN /\ found_blocks' = [found_blocks EXCEPT ![self] = Ops!FindBlocks(remote_peer_blocks'[self], 1, MaxGetBlocksInvResponse)]
                                            /\ UNCHANGED << hash_provided, 
                                                            height_to_start >>
                                       ELSE /\ hash_provided' = [hash_provided EXCEPT ![self] = channels[self].payload.block_header_hashes]
@@ -373,8 +371,7 @@ SendGetBlocksMessage(self) == /\ pc[self] = "SendGetBlocksMessage"
                                                                                 header |-> [command_name |-> "getblocks"],
                                                                                 payload |-> [
                                                                                     hash_count |-> Len(hashes[self]),
-                                                                                    block_header_hashes |-> hashes[self],
-                                                                                    stop_hash |-> "0"]
+                                                                                    block_header_hashes |-> hashes[self]]
                                                                             ]]
                               /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
                               /\ hashes' = [hashes EXCEPT ![self] = Head(stack[self]).hashes]
@@ -408,7 +405,7 @@ IncorporateLoop(self) == /\ pc[self] = "IncorporateLoop"
                                                                                       current_item'[self].hash
                                                                                   )]
                                     /\ Assert(block_data'[self].hash = current_item'[self].hash, 
-                                              "Failure of assertion at line 136, column 13.")
+                                              "Failure of assertion at line 134, column 13.")
                                     /\ the_network' =                Ops!UpdatePeerBlocks(the_network[self].peer, [
                                                           height |-> block_data'[self].height,
                                                           hash |-> block_data'[self].hash,
@@ -441,7 +438,7 @@ getdata(self) == IncorporateLoop(self) \/ UpdateTip(self)
 
 Listening(self) == /\ pc[self] = "Listening"
                    /\ Assert(Len(the_network) >= self /\ Len(channels) >= self, 
-                             "Failure of assertion at line 159, column 9.")
+                             "Failure of assertion at line 157, column 9.")
                    /\ IF channels[self].header = defaultInitValue
                          THEN /\ pc' = [pc EXCEPT ![self] = "Listening"]
                          ELSE /\ pc' = [pc EXCEPT ![self] = "Requests"]
@@ -617,8 +614,8 @@ Next == (\E self \in ProcSet:  \/ announce(self) \/ addr(self)
                                \/ version(self) \/ verack(self)
                                \/ getblocks(self) \/ request_blocks(self)
                                \/ inv(self) \/ getdata(self))
-           \/ (\E self \in 1..MAX_PEERS: client_task(self))
-           \/ (\E self \in (DIFF_ID + 1)..(DIFF_ID + MAX_PEERS): Peer(self))
+           \/ (\E self \in 1 .. Len(PEERS): client_task(self))
+           \/ (\E self \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS): Peer(self))
            \/ Terminating
 
 Spec == Init /\ [][Next]_vars

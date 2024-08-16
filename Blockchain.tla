@@ -1,7 +1,7 @@
 ---- MODULE Blockchain ----
 
 \* A simple blockchain model. *\
-PEERS == {
+PEERS == <<
     [peer |-> "peer1", blocks |-> {
         [height |-> 1, hash |-> "blockhash1", block |-> "serialized block data 1"],
         [height |-> 2, hash |-> "blockhash2", block |-> "serialized block data 2"],
@@ -14,9 +14,7 @@ PEERS == {
         blocks |-> {}, \* No blocks.
         peer_set |-> <<[address |-> "peer1", tip |-> 0, established |-> FALSE]>>,
         chain_tip |-> [height|-> 0, hash |-> "blockhash0"] \* No blocks.
-    ]
-    (*
-    ,
+    ],
     [peer |-> "peer3",
         blocks |-> {
             [height |-> 1, hash |-> "blockhash1", block |-> "serialized block data 1"],
@@ -25,7 +23,7 @@ PEERS == {
             [height |-> 4, hash |-> "blockhash4", block |-> "serialized block data 4"],
             [height |-> 5, hash |-> "blockhash5", block |-> "serialized block data 5"]
         }, \* All blocks.
-        peer_set |-> {}, \* No connections.
+        peer_set |-> <<>>, \* No connections.
         chain_tip |-> [height|-> 5, hash |-> "blockhash5"]
     ],
     [peer |-> "peer4",
@@ -33,11 +31,10 @@ PEERS == {
             [height |-> 1, hash |-> "blockhash1", block |-> "serialized block data 1"],
             [height |-> 2, hash |-> "blockhash2", block |-> "serialized block data 2"]
         }, \* Some blocks.
-        peer_set |-> {}, \* No connections.
+        peer_set |-> <<>>, \* No connections.
         chain_tip |-> [height|-> 2, hash |-> "blockhash2"]
     ]
-    *)
-}
+>>
 
 ====
 
