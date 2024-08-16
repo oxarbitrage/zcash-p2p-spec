@@ -12,7 +12,7 @@ PEERS == {
     ],
     [peer |-> "peer2",
         blocks |-> {}, \* No blocks.
-        peer_set |-> <<>>, \* No connections.
+        peer_set |-> <<[address |-> "peer1", tip |-> 0, established |-> FALSE]>>,
         chain_tip |-> [height|-> 0, hash |-> "blockhash0"] \* No blocks.
     ]
     (*
