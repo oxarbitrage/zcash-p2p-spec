@@ -38,4 +38,10 @@ FindBlocks(block_collection, start_height, end_height) ==
 \* Get the peer a peer from the network given a peer address.
 GetPeerFromNetwork(peer_address) == CHOOSE peer \in ToSet(the_network) : peer.peer = peer_address
 
+\* Get the chain tip of a peer given a peer address.
+GetPeerTip(peer_address) == (CHOOSE peer \in ToSet(the_network) : peer.peer = peer_address).chain_tip.height
+
+\* Get the blocks of a peer given a peer address.
+GetPeerBlocks(peer_address) == (CHOOSE peer \in ToSet(the_network) : peer.peer = peer_address).blocks
+
 ====
