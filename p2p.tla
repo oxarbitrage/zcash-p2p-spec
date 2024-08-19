@@ -96,11 +96,11 @@ begin
         channels[self] := [
             header |-> [command_name |-> "inv"],
             payload |-> [
-                count |-> Cardinality({ r \in DOMAIN found_blocks : found_blocks[r] = TRUE }),
+                count |-> Cardinality(found_blocks),
                 inventory |-> [
-                    h \in 1..Cardinality({ r \in DOMAIN found_blocks : found_blocks[r] = TRUE }) |-> [
+                    h \in 1..Cardinality(found_blocks) |-> [
                         type_identifier |-> "MSG_BLOCK",
-                        hash |-> SetToSeq({ s.hash : s \in { r \in DOMAIN found_blocks : found_blocks[r] = TRUE } })[h]
+                        hash |-> SetToSeq({ s.hash : s \in found_blocks })[h]
                     ]
                 ]
             ]
@@ -222,7 +222,7 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "5cb9d68d" /\ chksum(tla) = "8c82a6a")
+\* BEGIN TRANSLATION (chksum(pcal) = "159c032a" /\ chksum(tla) = "73711052")
 \* Process variable id of process SYNC at line 199 col 11 changed to id_
 \* Parameter id of procedure announce at line 24 col 20 changed to id_a
 CONSTANT defaultInitValue
@@ -348,7 +348,6 @@ HandleGetBlocksMessage(self) == /\ pc[self] = "HandleGetBlocksMessage"
                                       ELSE /\ start_height' = [start_height EXCEPT ![self] = Ops!FindBlockByHash(remote_peer_blocks'[self], block_header_hashes'[self][1]).height + 1]
                                 /\ end_height' = [end_height EXCEPT ![self] = start_height'[self] + (MaxGetBlocksInvResponse - 1)]
                                 /\ found_blocks' = [found_blocks EXCEPT ![self] = Ops!FindBlocks(remote_peer_blocks'[self], start_height'[self], end_height'[self])]
-                                /\ PrintT(found_blocks'[self])
                                 /\ pc' = [pc EXCEPT ![self] = "SendInvMessage"]
                                 /\ UNCHANGED << the_network, channels, stack, 
                                                 id_a, hashes, id, block_data, 
@@ -358,11 +357,11 @@ SendInvMessage(self) == /\ pc[self] = "SendInvMessage"
                         /\ channels' = [channels EXCEPT ![self] =                   [
                                                                       header |-> [command_name |-> "inv"],
                                                                       payload |-> [
-                                                                          count |-> Cardinality({ r \in DOMAIN found_blocks[self] : found_blocks[self][r] = TRUE }),
+                                                                          count |-> Cardinality(found_blocks[self]),
                                                                           inventory |-> [
-                                                                              h \in 1..Cardinality({ r \in DOMAIN found_blocks[self] : found_blocks[self][r] = TRUE }) |-> [
+                                                                              h \in 1..Cardinality(found_blocks[self]) |-> [
                                                                                   type_identifier |-> "MSG_BLOCK",
-                                                                                  hash |-> SetToSeq({ s.hash : s \in { r \in DOMAIN found_blocks[self] : found_blocks[self][r] = TRUE } })[h]
+                                                                                  hash |-> SetToSeq({ s.hash : s \in found_blocks[self] })[h]
                                                                               ]
                                                                           ]
                                                                       ]

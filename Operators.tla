@@ -33,7 +33,7 @@ UpdatePeerTip(peer_address, new_tip) == [i \in 1..Len(the_network) |->
 
 \* Given a block collection, a start height and an end height, returns the blocks in the given range.
 FindBlocks(block_collection, start_height, end_height) == 
-    [b \in block_collection |-> b.height >= start_height /\ b.height <= end_height]
+    { r \in DOMAIN [b \in block_collection |-> b.height >= start_height /\ b.height <= end_height] : TRUE }
 
 \* Get the peer a peer from the network given a peer address.
 GetPeerFromNetwork(peer_address) == CHOOSE peer \in ToSet(the_network) : peer.peer = peer_address
