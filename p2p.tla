@@ -208,12 +208,15 @@ begin
                 end if;
             end while;
     CheckSync:
+        \* Channels are empty, representing message exchange is done.
+        await channels[id].header = defaultInitValue /\ channels[id].payload = defaultInitValue;
+        \* Local tip is in sync with the remote peer tip.
         await the_network[id].peer_set[1].tip = the_network[id].chain_tip.height;
-        print "Network in sync!";
+        print "Peer is in sync!";
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "702906d9" /\ chksum(tla) = "8ca872af")
+\* BEGIN TRANSLATION (chksum(pcal) = "2322415b" /\ chksum(tla) = "e6654851")
 \* Process variable id of process SYNC at line 189 col 11 changed to id_
 \* Parameter id of procedure announce at line 24 col 20 changed to id_a
 CONSTANT defaultInitValue
@@ -544,7 +547,6 @@ Announce(self) == /\ pc[self] = "Announce"
                                   hashes, id, blocks_data, id_ >>
 
 RequestInventory(self) == /\ pc[self] = "RequestInventory"
-                          /\ PrintT(id_[self])
                           /\ Len(the_network[id_[self]].peer_set) > 0 /\ the_network[id_[self]].peer_set[1].established = TRUE
                           /\ pc' = [pc EXCEPT ![self] = "Syncronizer"]
                           /\ UNCHANGED << the_network, channels, stack, id_a, 
@@ -582,8 +584,9 @@ Syncronizer(self) == /\ pc[self] = "Syncronizer"
                                      end_height, blocks_data, id_ >>
 
 CheckSync(self) == /\ pc[self] = "CheckSync"
+                   /\ channels[id_[self]].header = defaultInitValue /\ channels[id_[self]].payload = defaultInitValue
                    /\ the_network[id_[self]].peer_set[1].tip = the_network[id_[self]].chain_tip.height
-                   /\ PrintT("Network in sync!")
+                   /\ PrintT("Peer is in sync!")
                    /\ pc' = [pc EXCEPT ![self] = "Done"]
                    /\ UNCHANGED << the_network, channels, stack, id_a, 
                                    found_blocks, hash_count, 
