@@ -191,15 +191,16 @@ begin
     Announce:
         \* Only one peer in the peer set is currently supported.
         await Len(the_network[id].peer_set) = 1;
-    
+
         call announce(id);
-    CheckConnectionEstablished:
-        await Len(the_network[id].peer_set) > 0 /\ the_network[id].peer_set[1].established = TRUE;
     RequestInventory:
-        await the_network[id].peer_set[1].tip > the_network[id].chain_tip.height;
+        \* Make sure the connection is established before requesting any block.
+        await Len(the_network[id].peer_set) > 0 /\ the_network[id].peer_set[1].established = TRUE;
         Syncronizer:
             while the_network[id].chain_tip.height < the_network[id].peer_set[1].tip do
+                \* Wait for the peer channel to be empty before requesting new blocks.
                 await channels[id].header = defaultInitValue /\ channels[id].payload = defaultInitValue;
+                \* Request blocks.
                 if the_network[id].chain_tip.height = 0 then
                     call request_blocks(<<>>, id);
                 else
@@ -212,7 +213,7 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "69750955" /\ chksum(tla) = "6e845bf6")
+\* BEGIN TRANSLATION (chksum(pcal) = "702906d9" /\ chksum(tla) = "8ca872af")
 \* Process variable id of process SYNC at line 189 col 11 changed to id_
 \* Parameter id of procedure announce at line 24 col 20 changed to id_a
 CONSTANT defaultInitValue
@@ -533,7 +534,7 @@ Announce(self) == /\ pc[self] = "Announce"
                   /\ Len(the_network[id_[self]].peer_set) = 1
                   /\ /\ id_a' = [id_a EXCEPT ![self] = id_[self]]
                      /\ stack' = [stack EXCEPT ![self] = << [ procedure |->  "announce",
-                                                              pc        |->  "CheckConnectionEstablished",
+                                                              pc        |->  "RequestInventory",
                                                               id_a      |->  id_a[self] ] >>
                                                           \o stack[self]]
                   /\ pc' = [pc EXCEPT ![self] = "SendAddrMessage"]
@@ -542,20 +543,9 @@ Announce(self) == /\ pc[self] = "Announce"
                                   remote_peer_blocks, start_height, end_height, 
                                   hashes, id, blocks_data, id_ >>
 
-CheckConnectionEstablished(self) == /\ pc[self] = "CheckConnectionEstablished"
-                                    /\ Len(the_network[id_[self]].peer_set) > 0 /\ the_network[id_[self]].peer_set[1].established = TRUE
-                                    /\ pc' = [pc EXCEPT ![self] = "RequestInventory"]
-                                    /\ UNCHANGED << the_network, channels, 
-                                                    stack, id_a, found_blocks, 
-                                                    hash_count, 
-                                                    block_header_hashes, 
-                                                    remote_peer_blocks, 
-                                                    start_height, end_height, 
-                                                    hashes, id, blocks_data, 
-                                                    id_ >>
-
 RequestInventory(self) == /\ pc[self] = "RequestInventory"
-                          /\ the_network[id_[self]].peer_set[1].tip > the_network[id_[self]].chain_tip.height
+                          /\ PrintT(id_[self])
+                          /\ Len(the_network[id_[self]].peer_set) > 0 /\ the_network[id_[self]].peer_set[1].established = TRUE
                           /\ pc' = [pc EXCEPT ![self] = "Syncronizer"]
                           /\ UNCHANGED << the_network, channels, stack, id_a, 
                                           found_blocks, hash_count, 
@@ -601,8 +591,7 @@ CheckSync(self) == /\ pc[self] = "CheckSync"
                                    start_height, end_height, hashes, id, 
                                    blocks_data, id_ >>
 
-SYNC(self) == Announce(self) \/ CheckConnectionEstablished(self)
-                 \/ RequestInventory(self) \/ Syncronizer(self)
+SYNC(self) == Announce(self) \/ RequestInventory(self) \/ Syncronizer(self)
                  \/ CheckSync(self)
 
 (* Allow infinite stuttering to prevent deadlock on termination. *)
