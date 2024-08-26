@@ -142,7 +142,7 @@ begin
                 Ops!GetPeerBlocks(the_network[self].peer_set[1].address), channels[self].payload.inventory[item].hash
             )
         ];
-        the_network := Ops!UpdatePeerBlocks(the_network[self].peer, ToSet(blocks_data));
+        the_network[self].blocks := the_network[self].blocks \cup ToSet(blocks_data);
     UpdateTip:
         the_network[self].chain_tip := [
             height |-> blocks_data[Len(blocks_data)].height,
@@ -216,7 +216,7 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "2322415b" /\ chksum(tla) = "e6654851")
+\* BEGIN TRANSLATION (chksum(pcal) = "269dcc2c" /\ chksum(tla) = "27ec1611")
 \* Process variable id of process SYNC at line 189 col 11 changed to id_
 \* Parameter id of procedure announce at line 24 col 20 changed to id_a
 CONSTANT defaultInitValue
@@ -411,7 +411,7 @@ Incorporate(self) == /\ pc[self] = "Incorporate"
                                                                              Ops!GetPeerBlocks(the_network[self].peer_set[1].address), channels[self].payload.inventory[item].hash
                                                                          )
                                                                      ]]
-                     /\ the_network' = Ops!UpdatePeerBlocks(the_network[self].peer, ToSet(blocks_data'[self]))
+                     /\ the_network' = [the_network EXCEPT ![self].blocks = the_network[self].blocks \cup ToSet(blocks_data'[self])]
                      /\ pc' = [pc EXCEPT ![self] = "UpdateTip"]
                      /\ UNCHANGED << channels, stack, id_a, found_blocks, 
                                      hash_count, block_header_hashes, 
