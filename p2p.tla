@@ -4,7 +4,7 @@ EXTENDS TLC, Sequences, Naturals, FiniteSets, Utils, Blockchain
 \* The maximum number of blocks to be retrieved in a single getblocks response.
 MaxGetBlocksInvResponse == 3
 
-\* Difference in the SYNC process identifier so that it does not conflict with the LISTENER one.
+\* Difference in the SYNCHRONIZER process identifier so that it does not conflict with the LISTENER one.
 PeerProcessDiffId == 1000
 
 (*--algorithm p2p
@@ -199,7 +199,7 @@ begin
 end process;
 
 \* A set of processes to synchronize each peer with the network.
-process SYNC \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS)
+process SYNCHRONIZER \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS)
 variables local_peer_index = self - PeerProcessDiffId, best_tip = 0;
 begin
     Announce:
@@ -221,7 +221,7 @@ begin
             end if;
             
             \* Wait for the peer channel to be empty before requesting new blocks.
-            await channels[local_peer_index][remote_peer_index].header = defaultInitValue 
+            await channels[local_peer_index][remote_peer_index].header = defaultInitValue
                 /\ channels[local_peer_index][remote_peer_index].payload = defaultInitValue;
 
             \* Check if the local peer is behind the remote peer.
