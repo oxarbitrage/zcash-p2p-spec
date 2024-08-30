@@ -14,8 +14,9 @@ variables
     the_network = PEERS;
 
     \* Each peer has a channel to communicate with other peers.
-    \* Assuming each peer can establish a max of 2 connections.
+    \* Assuming each peer can establish a max of 3 connections.
     channels = [i \in 1..Len(PEERS) |-> <<
+        [header |-> defaultInitValue, payload |-> defaultInitValue],
         [header |-> defaultInitValue, payload |-> defaultInitValue],
         [header |-> defaultInitValue, payload |-> defaultInitValue]
     >>]
@@ -157,7 +158,7 @@ begin
     return;
 end procedure;
 
-\* The listener process listen to incoming messages.
+\* A set of listener process for each peer to listen to incoming messages and act accordingly.
 process LISTENER \in 1 .. Len(PEERS)
 variables command;
 begin
@@ -197,7 +198,7 @@ begin
         end with;
 end process;
 
-\* The process to synchronize the local peer with the remote peer.
+\* A set of processes to synchronize each peer with the network.
 process SYNC \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS)
 variables local_peer_index = self - PeerProcessDiffId, best_tip = 0;
 begin
@@ -249,21 +250,21 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "b8f2fcc6" /\ chksum(tla) = "6d85f057")
-\* Parameter local_peer_id of procedure announce at line 28 col 20 changed to local_peer_id_
-\* Parameter remote_peer_id of procedure announce at line 28 col 35 changed to remote_peer_id_
-\* Parameter local_peer_id of procedure addr at line 43 col 16 changed to local_peer_id_a
-\* Parameter remote_peer_id of procedure addr at line 43 col 31 changed to remote_peer_id_a
-\* Parameter local_peer_id of procedure version at line 57 col 19 changed to local_peer_id_v
-\* Parameter remote_peer_id of procedure version at line 57 col 34 changed to remote_peer_id_v
-\* Parameter local_peer_id of procedure verack at line 70 col 18 changed to local_peer_id_ve
-\* Parameter remote_peer_id of procedure verack at line 70 col 33 changed to remote_peer_id_ve
-\* Parameter local_peer_id of procedure getblocks at line 78 col 21 changed to local_peer_id_g
-\* Parameter remote_peer_id of procedure getblocks at line 78 col 36 changed to remote_peer_id_g
-\* Parameter local_peer_id of procedure request_blocks at line 117 col 34 changed to local_peer_id_r
-\* Parameter remote_peer_id of procedure request_blocks at line 117 col 49 changed to remote_peer_id_r
-\* Parameter local_peer_id of procedure inv at line 130 col 15 changed to local_peer_id_i
-\* Parameter remote_peer_id of procedure inv at line 130 col 30 changed to remote_peer_id_i
+\* BEGIN TRANSLATION (chksum(pcal) = "7039361d" /\ chksum(tla) = "105e1d88")
+\* Parameter local_peer_id of procedure announce at line 29 col 20 changed to local_peer_id_
+\* Parameter remote_peer_id of procedure announce at line 29 col 35 changed to remote_peer_id_
+\* Parameter local_peer_id of procedure addr at line 44 col 16 changed to local_peer_id_a
+\* Parameter remote_peer_id of procedure addr at line 44 col 31 changed to remote_peer_id_a
+\* Parameter local_peer_id of procedure version at line 58 col 19 changed to local_peer_id_v
+\* Parameter remote_peer_id of procedure version at line 58 col 34 changed to remote_peer_id_v
+\* Parameter local_peer_id of procedure verack at line 71 col 18 changed to local_peer_id_ve
+\* Parameter remote_peer_id of procedure verack at line 71 col 33 changed to remote_peer_id_ve
+\* Parameter local_peer_id of procedure getblocks at line 79 col 21 changed to local_peer_id_g
+\* Parameter remote_peer_id of procedure getblocks at line 79 col 36 changed to remote_peer_id_g
+\* Parameter local_peer_id of procedure request_blocks at line 118 col 34 changed to local_peer_id_r
+\* Parameter remote_peer_id of procedure request_blocks at line 118 col 49 changed to remote_peer_id_r
+\* Parameter local_peer_id of procedure inv at line 131 col 15 changed to local_peer_id_i
+\* Parameter remote_peer_id of procedure inv at line 131 col 30 changed to remote_peer_id_i
 CONSTANT defaultInitValue
 VARIABLES the_network, channels, pc, stack
 
@@ -292,6 +293,7 @@ ProcSet == (1 .. Len(PEERS)) \cup (PeerProcessDiffId + 1 .. PeerProcessDiffId + 
 Init == (* Global variables *)
         /\ the_network = PEERS
         /\ channels =            [i \in 1..Len(PEERS) |-> <<
+                          [header |-> defaultInitValue, payload |-> defaultInitValue],
                           [header |-> defaultInitValue, payload |-> defaultInitValue],
                           [header |-> defaultInitValue, payload |-> defaultInitValue]
                       >>]
@@ -612,7 +614,7 @@ getdata(self) == Incorporate(self) \/ UpdateTip(self)
 Listening(self) == /\ pc[self] = "Listening"
                    /\ \E remote_peer_index \in 1..Len(the_network[self].peer_set):
                         /\ Assert(Len(the_network) >= self /\ Len(channels) >= self, 
-                                  "Failure of assertion at line 166, column 13.")
+                                  "Failure of assertion at line 167, column 13.")
                         /\ IF channels[self][remote_peer_index].header = defaultInitValue
                               THEN /\ pc' = [pc EXCEPT ![self] = "Listening"]
                               ELSE /\ pc' = [pc EXCEPT ![self] = "Requests"]
