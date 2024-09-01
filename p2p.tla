@@ -7,15 +7,17 @@ MaxGetBlocksInvResponse == 3
 \* Difference in the SYNCHRONIZER process identifier so that it does not conflict with the LISTENER one.
 PeerProcessDiffId == 1000
 
+RunningBlockchain == BLOCKCHAIN5
+
 (*--algorithm p2p
 
 variables
     \* Represent the whole universe of peers in the network with all of their data.
-    the_network = PEERS;
+    the_network = RunningBlockchain;
 
     \* Each peer has a channel to communicate with other peers.
     \* Assuming each peer can establish a max of 3 connections.
-    channels = [i \in 1..Len(PEERS) |-> <<
+    channels = [i \in 1..Len(the_network) |-> <<
         [header |-> defaultInitValue, payload |-> defaultInitValue],
         [header |-> defaultInitValue, payload |-> defaultInitValue],
         [header |-> defaultInitValue, payload |-> defaultInitValue]
@@ -159,10 +161,11 @@ begin
 end procedure;
 
 \* A set of listener process for each peer to listen to incoming messages and act accordingly.
-process LISTENER \in 1 .. Len(PEERS)
+process LISTENER \in 1 .. Len(RunningBlockchain)
 variables command;
 begin
     Listening:
+        await Len(the_network) >= 2;
         with remote_peer_index \in 1..Len(the_network[self].peer_set) do
             assert Len(the_network) >= self /\ Len(channels) >= self;
             if channels[self][remote_peer_index].header = defaultInitValue then
@@ -199,10 +202,13 @@ begin
 end process;
 
 \* A set of processes to synchronize each peer with the network.
-process SYNCHRONIZER \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS)
+process SYNCHRONIZER \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(RunningBlockchain)
 variables local_peer_index = self - PeerProcessDiffId, best_tip = 0;
 begin
     Announce:
+        \* The network must have at least one peer.
+        await Len(the_network) >= 2;
+
         \* The peer set size must be at least 1.
         await Len(the_network[local_peer_index].peer_set) > 0;
 
@@ -250,21 +256,21 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "7039361d" /\ chksum(tla) = "105e1d88")
-\* Parameter local_peer_id of procedure announce at line 29 col 20 changed to local_peer_id_
-\* Parameter remote_peer_id of procedure announce at line 29 col 35 changed to remote_peer_id_
-\* Parameter local_peer_id of procedure addr at line 44 col 16 changed to local_peer_id_a
-\* Parameter remote_peer_id of procedure addr at line 44 col 31 changed to remote_peer_id_a
-\* Parameter local_peer_id of procedure version at line 58 col 19 changed to local_peer_id_v
-\* Parameter remote_peer_id of procedure version at line 58 col 34 changed to remote_peer_id_v
-\* Parameter local_peer_id of procedure verack at line 71 col 18 changed to local_peer_id_ve
-\* Parameter remote_peer_id of procedure verack at line 71 col 33 changed to remote_peer_id_ve
-\* Parameter local_peer_id of procedure getblocks at line 79 col 21 changed to local_peer_id_g
-\* Parameter remote_peer_id of procedure getblocks at line 79 col 36 changed to remote_peer_id_g
-\* Parameter local_peer_id of procedure request_blocks at line 118 col 34 changed to local_peer_id_r
-\* Parameter remote_peer_id of procedure request_blocks at line 118 col 49 changed to remote_peer_id_r
-\* Parameter local_peer_id of procedure inv at line 131 col 15 changed to local_peer_id_i
-\* Parameter remote_peer_id of procedure inv at line 131 col 30 changed to remote_peer_id_i
+\* BEGIN TRANSLATION (chksum(pcal) = "5f699a51" /\ chksum(tla) = "c4e29a9a")
+\* Parameter local_peer_id of procedure announce at line 31 col 20 changed to local_peer_id_
+\* Parameter remote_peer_id of procedure announce at line 31 col 35 changed to remote_peer_id_
+\* Parameter local_peer_id of procedure addr at line 46 col 16 changed to local_peer_id_a
+\* Parameter remote_peer_id of procedure addr at line 46 col 31 changed to remote_peer_id_a
+\* Parameter local_peer_id of procedure version at line 60 col 19 changed to local_peer_id_v
+\* Parameter remote_peer_id of procedure version at line 60 col 34 changed to remote_peer_id_v
+\* Parameter local_peer_id of procedure verack at line 73 col 18 changed to local_peer_id_ve
+\* Parameter remote_peer_id of procedure verack at line 73 col 33 changed to remote_peer_id_ve
+\* Parameter local_peer_id of procedure getblocks at line 81 col 21 changed to local_peer_id_g
+\* Parameter remote_peer_id of procedure getblocks at line 81 col 36 changed to remote_peer_id_g
+\* Parameter local_peer_id of procedure request_blocks at line 120 col 34 changed to local_peer_id_r
+\* Parameter remote_peer_id of procedure request_blocks at line 120 col 49 changed to remote_peer_id_r
+\* Parameter local_peer_id of procedure inv at line 133 col 15 changed to local_peer_id_i
+\* Parameter remote_peer_id of procedure inv at line 133 col 30 changed to remote_peer_id_i
 CONSTANT defaultInitValue
 VARIABLES the_network, channels, pc, stack
 
@@ -288,11 +294,11 @@ vars == << the_network, channels, pc, stack, local_peer_id_, remote_peer_id_,
            remote_peer_id_i, local_peer_id, remote_peer_id, blocks_data, 
            command, local_peer_index, best_tip >>
 
-ProcSet == (1 .. Len(PEERS)) \cup (PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS))
+ProcSet == (1 .. Len(RunningBlockchain)) \cup (PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(RunningBlockchain))
 
 Init == (* Global variables *)
-        /\ the_network = PEERS
-        /\ channels =            [i \in 1..Len(PEERS) |-> <<
+        /\ the_network = RunningBlockchain
+        /\ channels =            [i \in 1..Len(the_network) |-> <<
                           [header |-> defaultInitValue, payload |-> defaultInitValue],
                           [header |-> defaultInitValue, payload |-> defaultInitValue],
                           [header |-> defaultInitValue, payload |-> defaultInitValue]
@@ -330,13 +336,13 @@ Init == (* Global variables *)
         /\ remote_peer_id = [ self \in ProcSet |-> defaultInitValue]
         /\ blocks_data = [ self \in ProcSet |-> defaultInitValue]
         (* Process LISTENER *)
-        /\ command = [self \in 1 .. Len(PEERS) |-> defaultInitValue]
-        (* Process SYNC *)
-        /\ local_peer_index = [self \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS) |-> self - PeerProcessDiffId]
-        /\ best_tip = [self \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS) |-> 0]
+        /\ command = [self \in 1 .. Len(RunningBlockchain) |-> defaultInitValue]
+        (* Process SYNCHRONIZER *)
+        /\ local_peer_index = [self \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(RunningBlockchain) |-> self - PeerProcessDiffId]
+        /\ best_tip = [self \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(RunningBlockchain) |-> 0]
         /\ stack = [self \in ProcSet |-> << >>]
-        /\ pc = [self \in ProcSet |-> CASE self \in 1 .. Len(PEERS) -> "Listening"
-                                        [] self \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS) -> "Announce"]
+        /\ pc = [self \in ProcSet |-> CASE self \in 1 .. Len(RunningBlockchain) -> "Listening"
+                                        [] self \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(RunningBlockchain) -> "Announce"]
 
 SendAddrMsg(self) == /\ pc[self] = "SendAddrMsg"
                      /\ channels' = [channels EXCEPT ![local_peer_id_[self]][remote_peer_id_[self]] =                                            [
@@ -612,9 +618,10 @@ UpdateTip(self) == /\ pc[self] = "UpdateTip"
 getdata(self) == Incorporate(self) \/ UpdateTip(self)
 
 Listening(self) == /\ pc[self] = "Listening"
+                   /\ Len(the_network) >= 2
                    /\ \E remote_peer_index \in 1..Len(the_network[self].peer_set):
                         /\ Assert(Len(the_network) >= self /\ Len(channels) >= self, 
-                                  "Failure of assertion at line 167, column 13.")
+                                  "Failure of assertion at line 171, column 13.")
                         /\ IF channels[self][remote_peer_index].header = defaultInitValue
                               THEN /\ pc' = [pc EXCEPT ![self] = "Listening"]
                               ELSE /\ pc' = [pc EXCEPT ![self] = "Requests"]
@@ -800,6 +807,7 @@ ListenerLoop(self) == /\ pc[self] = "ListenerLoop"
 LISTENER(self) == Listening(self) \/ Requests(self) \/ ListenerLoop(self)
 
 Announce(self) == /\ pc[self] = "Announce"
+                  /\ Len(the_network) >= 2
                   /\ Len(the_network[local_peer_index[self]].peer_set) > 0
                   /\ \E remote_peer_index \in 1..Len(the_network[local_peer_index[self]].peer_set):
                        /\ /\ local_peer_id_' = [local_peer_id_ EXCEPT ![self] = local_peer_index[self]]
@@ -895,7 +903,8 @@ CheckSync(self) == /\ pc[self] = "CheckSync"
                                    local_peer_id, remote_peer_id, blocks_data, 
                                    command, local_peer_index, best_tip >>
 
-SYNC(self) == Announce(self) \/ RequestInventory(self) \/ CheckSync(self)
+SYNCHRONIZER(self) == Announce(self) \/ RequestInventory(self)
+                         \/ CheckSync(self)
 
 (* Allow infinite stuttering to prevent deadlock on termination. *)
 Terminating == /\ \A self \in ProcSet: pc[self] = "Done"
@@ -905,8 +914,8 @@ Next == (\E self \in ProcSet:  \/ announce(self) \/ addr(self)
                                \/ version(self) \/ verack(self)
                                \/ getblocks(self) \/ request_blocks(self)
                                \/ inv(self) \/ getdata(self))
-           \/ (\E self \in 1 .. Len(PEERS): LISTENER(self))
-           \/ (\E self \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(PEERS): SYNC(self))
+           \/ (\E self \in 1 .. Len(RunningBlockchain): LISTENER(self))
+           \/ (\E self \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(RunningBlockchain): SYNCHRONIZER(self))
            \/ Terminating
 
 Spec == Init /\ [][Next]_vars
