@@ -1,21 +1,21 @@
-# The Zcash P2P protocol specification
+# The Zcash P2P Protocol Specification
 
-The Zcash P2P protocol is an unspecified system. Inherited from the [Bitcoin P2P](https://developer.bitcoin.org/reference/p2p_networking.html), the Zcash version is a subset of it.
+The Zcash P2P protocol is a decentralized system, inherited as a subset from the [Bitcoin P2P protocol](https://developer.bitcoin.org/reference/p2p_networking.html). The primary role of this protocol is to keep nodes synchronized with the network. Peers exchange a set of well-defined messages, but the synchronization algorithm is not standardized, allowing for variation in implementations.
 
-The main role of the P2P protocol is to keep nodes in sync with the network and in order to do so, peers exchange well specified messages.
-
-Peers can be connected to multiple peers, if that is the case, we want to load balance the work with all our peers and download blocks in paralell.
-
-This is what this specification is about.
+This specification describes an approach where peers can connect to multiple other peers, aiming to load balance the workload and download blocks in parallel.
 
 ## Motivation
 
-In general, specs are written to find bugs, this compensates the effort of writing them. However, the main motivations here were not to find bugs but:
+Specifications are typically written to identify and fix bugs, justifying the effort involved. However, the primary motivations for this project are:
 
-- Purely learning purposes, improve TLA+/PlusCal skills.
-- Have a better unerstanding how the Zcash P2P protocol works. 
+- To learn more PlusCal and TLA+.
+- To formally define a blockchain synchronization algorithm.
 
-## The project
+This is an ongoing project, and comments or contributions are highly encouraged.
+
+## Project Structure
+
+The project consists of several files, with `p2p.tla` being the core specification. The algorithm is implemented in PlusCal.
 
 - [Spec](p2p.tla)
 - [PDF]()
@@ -23,19 +23,31 @@ In general, specs are written to find bugs, this compensates the effort of writi
 - [Operators](Operators.tla)
 - [Utils](Utils.tla)
 
-## The model
+## Model Overview
 
-The model acts according to initial network conditions that are stored in `Blockchain!PEERS`.
+The model operates based on initial network conditions stored in the `Blockchain.tla` module. Variables such as the number of peers, the blocks each peer holds, and the peer set of each peer influence the model's state and behavior during model checking with TLC.
 
-....
-empty example?
+### Running the Model
 
-...
+To run the model, we use the [TLA+ for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=alygin.vscode-tlaplus) extension, which parses the PlusCal code into TLA+ and allows us to run the TLC model checker.
 
+The Blockchain.tla module includes different initial conditions, labeled as `BLOCKCHAIN1`, `BLOCKCHAIN2`, etc.
 
-### The LISTENER process
+In `p2p.tla`, you must update the RunningBlockchain variable to the desired network condition before running the model checker. For example:
 
-This processs just listen for incoming messages and call a procedure when a message arraives to the channel. The followings are the supported messages of this specification.
+```
+RunningBlockchain == BLOCKCHAIN5
+```
+
+Then, run the TLC model checker against the parsed `p2p.tla` file.
+
+## Internals
+
+The algorithm consists of two processes running in parallel.
+
+### LISTENER process
+
+This process listens for incoming messages and calls the corresponding procedure when a message arrives on the channel established between two connected peers. The following are the supported messages in this specification:
 
 ```mermaid
 flowchart TD
@@ -47,13 +59,13 @@ LISTENER --> |Listen|inv
 LISTENER --> |Listen|getdata
 ```
 
-### The SYNCHRONIZER process
+### SYNCHRONIZER process
 
-This process creates connections between peers. Connections are created betwen each peer in the `Blockchain!PEER` sequence and the peers each peer has in the `peer_set` sequence field.  After the connection is established, peers will request blocks and try to sync with the network.
+This process manages connections between peers. Connections are created between each peer listed in the `RunningBlockchain` sequence and their respective peers in the `peer_set`. Once connected, peers will request blocks and attempt to synchronize with the network.
 
-The following diagram assumes 3 peers in the network (`peer1`, `peer2` and `peer3`) and that `peer2` has `peer1` and `peer3` in the `peer_set` field it's `Blockchain!PEER` entry.
+The following diagram assumes a network of three peers (peer1, peer2, and peer3), where peer2 has peer1 and peer3 in its peer_set.
 
-`SYNCHRONIZER` will not open connections for `peer1` and `peer3` as they don't have peers in the `peer_set`, so, this is what the `SYNCHRONIZER` will do for `peer2`.
+`SYNCHRONIZER` will not open connections for peer1 and peer3 since they have no peers in their `peer_set`. For peer2, connections with peer1 and peer3 will be established, and blocks will be requested from both until peer2 is in sync, at which point the algorithm terminates.
 
 ```mermaid
 flowchart TD
@@ -67,9 +79,9 @@ peer3 --> |Send blocks|sync
 sync ---> |Peer in sync|terminate
 ```
 
-### Single peer sync
+### Single Peer Synchronization
 
-Let's now assume 2 peers in the network (`peer1` and `peer2`) where `peer1` is in the `peer_set` of `peer2`. Here is how the `SYNCHRONIZER` and the `LISTENER` interact to put `peer2` in sync with `peer1` at a messages level.
+Let's now consider a network with two peers (peer1 and peer2), where peer1 is in the `peer_set` of peer2. The following diagram shows how the `SYNCHRONIZER` and `LISTENER` processes interact to synchronize peer2 with peer1 at the message level.
 
 ```mermaid
 flowchart TD
@@ -101,25 +113,25 @@ incorporate --> sync
 incorporate --> terminate
 ```
 
-### Multi peer sync
+### Multi-Peer Synchronization
 
-Going back to a network of 3 peers (`peer1`, `peer2` and `peer3`) where only the `peer_set` field has peers `peer1` and `peer2` in place.
+In a network with three peers (peer1, peer2, and peer3), where only peer2 has peers in its `peer_set` (specifically, peer1 and peer3), the following sequence occurs:
 
-After connected with both peers, the `SYNCHRONIZER` will request a batch of blocks from `peer1`. As this batch was not enough to be in sync, a next back will be requested from `peer2`, then check again and request more blocks from `peer1` to finally terminate.
+After connecting with both peers, the `SYNCHRONIZER` requests a batch of blocks from peer1. If this batch is insufficient for full synchronization, another batch is requested from peer3, and the process repeats until peer2 is fully synchronized.
  
 ```mermaid
 sequenceDiagram
-    Peer2->>Peer1: request_blocks
-    Peer1->>Peer2: here are some blocks
+    Peer2->>Peer1: Request blocks
+    Peer1->>Peer2: Send blocks
 
-    Peer2->>Peer2: Do i need more? YES
-    Peer2->>Peer3: request more blocks
-    Peer3 ->>Peer2: Here are some blocks
+    Peer2->>Peer2: Need more blocks? YES
+    Peer2->>Peer3: Request more blocks
+    Peer3 ->>Peer2: Send more blocks
 
-    Peer2->>Peer2: Do i need more? YES
+    Peer2->>Peer2: Need more blocks? YES
 
-    Peer2->>Peer1: request more and more blocks
-    Peer1->>Peer2: here are some more and more blocks
+    Peer2->>Peer1: Request more blocks
+    Peer1->>Peer2: Send more blocks
 
-    Peer2->>Peer2: Do i need more? NO
+    Peer2->>Peer2: Need more blocks? NO
 ```
