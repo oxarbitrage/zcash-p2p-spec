@@ -1,12 +1,18 @@
----- MODULE p2p ----
+-------------------------------- MODULE p2p ---------------------------------
+(***************************************************************************)
+(* This module defines a simple peer-to-peer network protocol that allows  *)
+(* peers to connect, exchange blocks, and synchronize their chains.        *)
+(***************************************************************************)
 EXTENDS TLC, Sequences, Naturals, FiniteSets, Utils, Blockchain
 
-\* The maximum number of blocks to be retrieved in a single getblocks response.
+\* Maximum number of blocks to be retrieved in a single getblocks response.
 MaxGetBlocksInvResponse == 3
 
-\* Difference in the SYNCHRONIZER process identifier so that it does not conflict with the LISTENER one.
+\* Difference in the SYNCHRONIZER process identifier so that it does not
+\* conflict with the LISTENER one.
 PeerProcessDiffId == 1000
 
+\* Define the network to be used by the algorithm.
 RunningBlockchain == BLOCKCHAIN5
 
 (*--algorithm p2p
@@ -16,7 +22,7 @@ variables
     the_network = RunningBlockchain;
 
     \* Each peer has a channel to communicate with other peers.
-    \* Assuming each peer can establish a max of 3 connections.
+    \* TODO: Each peer can establish a max of 3 connections.
     channels = [i \in 1..Len(the_network) |-> <<
         [header |-> defaultInitValue, payload |-> defaultInitValue],
         [header |-> defaultInitValue, payload |-> defaultInitValue],
@@ -60,7 +66,8 @@ end procedure;
 procedure version(local_peer_id, remote_peer_id)
 begin
     HandleVersionMsg:
-        the_network[local_peer_id].peer_set[remote_peer_id].tip := channels[local_peer_id][remote_peer_id].payload.start_height;
+        the_network[local_peer_id].peer_set[remote_peer_id].tip :=
+            channels[local_peer_id][remote_peer_id].payload.start_height;
     SendVerackMsg:
         channels[local_peer_id][remote_peer_id] := [
             header |-> [command_name |-> "verack"],
@@ -231,12 +238,17 @@ begin
                 /\ channels[local_peer_index][remote_peer_index].payload = defaultInitValue;
 
             \* Check if the local peer is behind the remote peer.
-            if the_network[local_peer_index].chain_tip.height < the_network[local_peer_index].peer_set[remote_peer_index].tip then
+            if the_network[local_peer_index].chain_tip.height <
+                the_network[local_peer_index].peer_set[remote_peer_index].tip then
                 \* Request blocks.
                 if the_network[local_peer_index].chain_tip.height = 0 then
                     call request_blocks(<<>>, local_peer_index, remote_peer_index);
                 else
-                    call request_blocks(<<the_network[local_peer_index].chain_tip.hash>>, local_peer_index, remote_peer_index);
+                    call request_blocks(
+                        <<the_network[local_peer_index].chain_tip.hash>>,
+                        local_peer_index,
+                        remote_peer_index
+                    );
                 end if;
             end if;
         end with;
@@ -256,21 +268,21 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "5f699a51" /\ chksum(tla) = "c4e29a9a")
-\* Parameter local_peer_id of procedure announce at line 31 col 20 changed to local_peer_id_
-\* Parameter remote_peer_id of procedure announce at line 31 col 35 changed to remote_peer_id_
-\* Parameter local_peer_id of procedure addr at line 46 col 16 changed to local_peer_id_a
-\* Parameter remote_peer_id of procedure addr at line 46 col 31 changed to remote_peer_id_a
-\* Parameter local_peer_id of procedure version at line 60 col 19 changed to local_peer_id_v
-\* Parameter remote_peer_id of procedure version at line 60 col 34 changed to remote_peer_id_v
-\* Parameter local_peer_id of procedure verack at line 73 col 18 changed to local_peer_id_ve
-\* Parameter remote_peer_id of procedure verack at line 73 col 33 changed to remote_peer_id_ve
-\* Parameter local_peer_id of procedure getblocks at line 81 col 21 changed to local_peer_id_g
-\* Parameter remote_peer_id of procedure getblocks at line 81 col 36 changed to remote_peer_id_g
-\* Parameter local_peer_id of procedure request_blocks at line 120 col 34 changed to local_peer_id_r
-\* Parameter remote_peer_id of procedure request_blocks at line 120 col 49 changed to remote_peer_id_r
-\* Parameter local_peer_id of procedure inv at line 133 col 15 changed to local_peer_id_i
-\* Parameter remote_peer_id of procedure inv at line 133 col 30 changed to remote_peer_id_i
+\* BEGIN TRANSLATION (chksum(pcal) = "2e4335f6" /\ chksum(tla) = "87af8486")
+\* Parameter local_peer_id of procedure announce at line 37 col 20 changed to local_peer_id_
+\* Parameter remote_peer_id of procedure announce at line 37 col 35 changed to remote_peer_id_
+\* Parameter local_peer_id of procedure addr at line 52 col 16 changed to local_peer_id_a
+\* Parameter remote_peer_id of procedure addr at line 52 col 31 changed to remote_peer_id_a
+\* Parameter local_peer_id of procedure version at line 66 col 19 changed to local_peer_id_v
+\* Parameter remote_peer_id of procedure version at line 66 col 34 changed to remote_peer_id_v
+\* Parameter local_peer_id of procedure verack at line 80 col 18 changed to local_peer_id_ve
+\* Parameter remote_peer_id of procedure verack at line 80 col 33 changed to remote_peer_id_ve
+\* Parameter local_peer_id of procedure getblocks at line 88 col 21 changed to local_peer_id_g
+\* Parameter remote_peer_id of procedure getblocks at line 88 col 36 changed to remote_peer_id_g
+\* Parameter local_peer_id of procedure request_blocks at line 127 col 34 changed to local_peer_id_r
+\* Parameter remote_peer_id of procedure request_blocks at line 127 col 49 changed to remote_peer_id_r
+\* Parameter local_peer_id of procedure inv at line 140 col 15 changed to local_peer_id_i
+\* Parameter remote_peer_id of procedure inv at line 140 col 30 changed to remote_peer_id_i
 CONSTANT defaultInitValue
 VARIABLES the_network, channels, pc, stack
 
@@ -621,7 +633,7 @@ Listening(self) == /\ pc[self] = "Listening"
                    /\ Len(the_network) >= 2
                    /\ \E remote_peer_index \in 1..Len(the_network[self].peer_set):
                         /\ Assert(Len(the_network) >= self /\ Len(channels) >= self, 
-                                  "Failure of assertion at line 171, column 13.")
+                                  "Failure of assertion at line 177, column 13.")
                         /\ IF channels[self][remote_peer_index].header = defaultInitValue
                               THEN /\ pc' = [pc EXCEPT ![self] = "Listening"]
                               ELSE /\ pc' = [pc EXCEPT ![self] = "Requests"]
@@ -839,7 +851,8 @@ RequestInventory(self) == /\ pc[self] = "RequestInventory"
                                           /\ UNCHANGED best_tip
                                /\   channels[local_peer_index[self]][remote_peer_index].header = defaultInitValue
                                   /\ channels[local_peer_index[self]][remote_peer_index].payload = defaultInitValue
-                               /\ IF the_network[local_peer_index[self]].chain_tip.height < the_network[local_peer_index[self]].peer_set[remote_peer_index].tip
+                               /\ IF the_network[local_peer_index[self]].chain_tip.height <
+                                      the_network[local_peer_index[self]].peer_set[remote_peer_index].tip
                                      THEN /\ IF the_network[local_peer_index[self]].chain_tip.height = 0
                                                 THEN /\ /\ hashes' = [hashes EXCEPT ![self] = <<>>]
                                                         /\ local_peer_id_r' = [local_peer_id_r EXCEPT ![self] = local_peer_index[self]]
