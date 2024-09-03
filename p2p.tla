@@ -8,8 +8,7 @@ EXTENDS TLC, Sequences, Naturals, FiniteSets, Utils, Blockchain
 \* Maximum number of blocks to be retrieved in a single getblocks response.
 MaxGetBlocksInvResponse == 3
 
-\* Difference in the SYNCHRONIZER process identifier so that it does not
-\* conflict with the LISTENER one.
+\* Difference in the SYNCHRONIZER process id so that it does not conflict with the LISTENER one.
 PeerProcessDiffId == 1000
 
 \* Define the network to be used by the algorithm.
@@ -21,13 +20,10 @@ variables
     \* Represent the whole universe of peers in the network with all of their data.
     the_network = RunningBlockchain;
 
-    \* Each peer has a channel to communicate with other peers.
-    \* TODO: Each peer can establish a max of 3 connections.
-    channels = [i \in 1..Len(the_network) |-> <<
-        [header |-> defaultInitValue, payload |-> defaultInitValue],
-        [header |-> defaultInitValue, payload |-> defaultInitValue],
-        [header |-> defaultInitValue, payload |-> defaultInitValue]
-    >>]
+    \* Each peer has a channel to communicate with other peers. Each peer can establish a max of 3 connections.
+    channels = [i \in 1..Len(the_network) |->
+        [j \in 1..3 |-> [header |-> defaultInitValue, payload |-> defaultInitValue]]];
+
 define
     \* Import the operators used in the algorithm.
     LOCAL Ops == INSTANCE Operators
@@ -57,7 +53,8 @@ begin
             payload |-> [
                 addr_recv |-> the_network[local_peer_id].peer,
                 addr_trans |-> the_network[local_peer_id].peer_set[remote_peer_id].address,
-                start_height |-> Ops!GetPeerTip(the_network[local_peer_id].peer_set[remote_peer_id].address)]
+                start_height |-> 
+                    Ops!GetPeerTip(the_network[local_peer_id].peer_set[remote_peer_id].address)]
         ];
     return;
 end procedure;
@@ -86,7 +83,8 @@ end procedure;
 
 \* Given a `getblocks` message is received, send an `inv` message with the blocks requested.
 procedure getblocks(local_peer_id, remote_peer_id)
-variables found_blocks, hash_count, block_header_hashes, remote_peer_blocks, start_height, end_height;
+variables 
+    found_blocks, hash_count, block_header_hashes, remote_peer_blocks, start_height, end_height;
 begin
     HandleGetBlocksMsg:
         \* Retrieve necessary values from the channel payload
@@ -94,14 +92,16 @@ begin
         block_header_hashes := channels[local_peer_id][remote_peer_id].payload.block_header_hashes;
 
         \* Fetch the blocks of the remote peer
-        remote_peer_blocks := Ops!GetPeerBlocks(the_network[local_peer_id].peer_set[remote_peer_id].address);
+        remote_peer_blocks := 
+            Ops!GetPeerBlocks(the_network[local_peer_id].peer_set[remote_peer_id].address);
 
         \* Determine the range of blocks to retrieve
         if hash_count = 0 then
             start_height := 1;
         else
             \* Assuming the hashes are in order, the height of the first hash should be the tip, ignore the rest. 
-            start_height := Ops!FindBlockByHash(remote_peer_blocks, block_header_hashes[1]).height + 1;
+            start_height := 
+                Ops!FindBlockByHash(remote_peer_blocks, block_header_hashes[1]).height + 1;
         end if;
         end_height := start_height + (MaxGetBlocksInvResponse - 1);
 
@@ -174,7 +174,6 @@ begin
     Listening:
         await Len(the_network) >= 2;
         with remote_peer_index \in 1..Len(the_network[self].peer_set) do
-            assert Len(the_network) >= self /\ Len(channels) >= self;
             if channels[self][remote_peer_index].header = defaultInitValue then
                 goto Listening;
             end if;
@@ -203,7 +202,8 @@ begin
         end with;
     ListenerLoop:
         with remote_peer_index \in 1..Len(the_network[self].peer_set) do
-            channels[self][remote_peer_index] := [header |-> defaultInitValue, payload |-> defaultInitValue];
+            channels[self][remote_peer_index] := 
+                [header |-> defaultInitValue, payload |-> defaultInitValue];
             goto Listening;
         end with;
 end process;
@@ -213,7 +213,7 @@ process SYNCHRONIZER \in PeerProcessDiffId + 1 .. PeerProcessDiffId + Len(Runnin
 variables local_peer_index = self - PeerProcessDiffId, best_tip = 0;
 begin
     Announce:
-        \* The network must have at least one peer.
+        \* The network must have at least two peer.
         await Len(the_network) >= 2;
 
         \* The peer set size must be at least 1.
@@ -268,17 +268,17 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "2e4335f6" /\ chksum(tla) = "87af8486")
-\* Parameter local_peer_id of procedure announce at line 37 col 20 changed to local_peer_id_
-\* Parameter remote_peer_id of procedure announce at line 37 col 35 changed to remote_peer_id_
-\* Parameter local_peer_id of procedure addr at line 52 col 16 changed to local_peer_id_a
-\* Parameter remote_peer_id of procedure addr at line 52 col 31 changed to remote_peer_id_a
-\* Parameter local_peer_id of procedure version at line 66 col 19 changed to local_peer_id_v
-\* Parameter remote_peer_id of procedure version at line 66 col 34 changed to remote_peer_id_v
-\* Parameter local_peer_id of procedure verack at line 80 col 18 changed to local_peer_id_ve
-\* Parameter remote_peer_id of procedure verack at line 80 col 33 changed to remote_peer_id_ve
-\* Parameter local_peer_id of procedure getblocks at line 88 col 21 changed to local_peer_id_g
-\* Parameter remote_peer_id of procedure getblocks at line 88 col 36 changed to remote_peer_id_g
+\* BEGIN TRANSLATION (chksum(pcal) = "89735483" /\ chksum(tla) = "d42aa36a")
+\* Parameter local_peer_id of procedure announce at line 33 col 20 changed to local_peer_id_
+\* Parameter remote_peer_id of procedure announce at line 33 col 35 changed to remote_peer_id_
+\* Parameter local_peer_id of procedure addr at line 48 col 16 changed to local_peer_id_a
+\* Parameter remote_peer_id of procedure addr at line 48 col 31 changed to remote_peer_id_a
+\* Parameter local_peer_id of procedure version at line 63 col 19 changed to local_peer_id_v
+\* Parameter remote_peer_id of procedure version at line 63 col 34 changed to remote_peer_id_v
+\* Parameter local_peer_id of procedure verack at line 77 col 18 changed to local_peer_id_ve
+\* Parameter remote_peer_id of procedure verack at line 77 col 33 changed to remote_peer_id_ve
+\* Parameter local_peer_id of procedure getblocks at line 85 col 21 changed to local_peer_id_g
+\* Parameter remote_peer_id of procedure getblocks at line 85 col 36 changed to remote_peer_id_g
 \* Parameter local_peer_id of procedure request_blocks at line 127 col 34 changed to local_peer_id_r
 \* Parameter remote_peer_id of procedure request_blocks at line 127 col 49 changed to remote_peer_id_r
 \* Parameter local_peer_id of procedure inv at line 140 col 15 changed to local_peer_id_i
@@ -310,11 +310,8 @@ ProcSet == (1 .. Len(RunningBlockchain)) \cup (PeerProcessDiffId + 1 .. PeerProc
 
 Init == (* Global variables *)
         /\ the_network = RunningBlockchain
-        /\ channels =            [i \in 1..Len(the_network) |-> <<
-                          [header |-> defaultInitValue, payload |-> defaultInitValue],
-                          [header |-> defaultInitValue, payload |-> defaultInitValue],
-                          [header |-> defaultInitValue, payload |-> defaultInitValue]
-                      >>]
+        /\ channels =        [i \in 1..Len(the_network) |->
+                      [j \in 1..3 |-> [header |-> defaultInitValue, payload |-> defaultInitValue]]]
         (* Procedure announce *)
         /\ local_peer_id_ = [ self \in ProcSet |-> defaultInitValue]
         /\ remote_peer_id_ = [ self \in ProcSet |-> defaultInitValue]
@@ -390,7 +387,8 @@ SendVersionMsg(self) == /\ pc[self] = "SendVersionMsg"
                                                                                                                payload |-> [
                                                                                                                    addr_recv |-> the_network[local_peer_id_a[self]].peer,
                                                                                                                    addr_trans |-> the_network[local_peer_id_a[self]].peer_set[remote_peer_id_a[self]].address,
-                                                                                                                   start_height |-> Ops!GetPeerTip(the_network[local_peer_id_a[self]].peer_set[remote_peer_id_a[self]].address)]
+                                                                                                                   start_height |->
+                                                                                                                       Ops!GetPeerTip(the_network[local_peer_id_a[self]].peer_set[remote_peer_id_a[self]].address)]
                                                                                                            ]]
                         /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
                         /\ local_peer_id_a' = [local_peer_id_a EXCEPT ![self] = Head(stack[self]).local_peer_id_a]
@@ -632,11 +630,9 @@ getdata(self) == Incorporate(self) \/ UpdateTip(self)
 Listening(self) == /\ pc[self] = "Listening"
                    /\ Len(the_network) >= 2
                    /\ \E remote_peer_index \in 1..Len(the_network[self].peer_set):
-                        /\ Assert(Len(the_network) >= self /\ Len(channels) >= self, 
-                                  "Failure of assertion at line 177, column 13.")
-                        /\ IF channels[self][remote_peer_index].header = defaultInitValue
-                              THEN /\ pc' = [pc EXCEPT ![self] = "Listening"]
-                              ELSE /\ pc' = [pc EXCEPT ![self] = "Requests"]
+                        IF channels[self][remote_peer_index].header = defaultInitValue
+                           THEN /\ pc' = [pc EXCEPT ![self] = "Listening"]
+                           ELSE /\ pc' = [pc EXCEPT ![self] = "Requests"]
                    /\ UNCHANGED << the_network, channels, stack, 
                                    local_peer_id_, remote_peer_id_, 
                                    local_peer_id_a, remote_peer_id_a, 
