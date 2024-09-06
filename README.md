@@ -85,32 +85,32 @@ Let's now consider a network with two peers (peer1 and peer2), where peer1 is in
 
 ```mermaid
 flowchart TD
-LISTENER[[LISTENER]] --> addr
-LISTENER --> version
-LISTENER --> verack
-LISTENER --> getblocks
-LISTENER --> inv
-LISTENER --> getdata
+LISTENER[[LISTENER]] --> |Listen|addr
+LISTENER --> |Listen|version
+LISTENER --> |Listen|verack
+LISTENER --> |Listen|getblocks
+LISTENER --> |Listen|inv
+LISTENER --> |Listen|getdata
 
 SYNCHRONIZER[[SYNCHRONIZER]] --> announce
-announce --> send_addr_msg([SendAddrMsg])
-send_addr_msg --> addr
-addr --> send_version_msg([SendVersionMsg])
-send_version_msg --> version
-version --> send_verack_msg([SendVerackMsg])
-send_verack_msg --> verack
+announce --> |Start Connecting|send_addr_msg([SendAddrMsg])
+send_addr_msg --> |Process|addr
+addr --> |Start Hansdhake|send_version_msg([SendVersionMsg])
+send_version_msg --> |Process|version
+version --> |More Hanshake|send_verack_msg([SendVerackMsg])
+send_verack_msg --> |End Handshake - Connected|verack
 
-announce --> sync
-sync --> request_blocks
-request_blocks --> send_getblocks_msg([SendGetBlocksMsg])
-send_getblocks_msg --> getblocks
-getblocks --> send_inv_msg([SendInvMsg])
-send_inv_msg --> inv
-inv --> send_getdata_msg([SendGetDataMsg])
-send_getdata_msg --> getdata
-getdata --> incorporate
-incorporate --> sync
-incorporate --> terminate
+announce --> |Await connected|sync
+sync --> |Decide blocks to be requested|request_blocks
+request_blocks --> |Request inv|send_getblocks_msg([SendGetBlocksMsg])
+send_getblocks_msg --> |Process|getblocks
+getblocks --> |Get inv|send_inv_msg([SendInvMsg])
+send_inv_msg --> |Process|inv
+inv --> |Request data|send_getdata_msg([SendGetDataMsg])
+send_getdata_msg --> |Process|getdata
+getdata --> |Add data to peer|incorporate
+incorporate --> |Sync loop|sync
+incorporate --> |End algorithm|terminate
 ```
 
 ### Multi-Peer Synchronization
