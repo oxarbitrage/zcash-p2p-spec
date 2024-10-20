@@ -12,7 +12,7 @@ MaxGetBlocksInvResponse == 3
 PeerProcessDiffId == 1000
 
 \* Define the network to be used by the algorithm.
-RunningBlockchain == BLOCKCHAIN5
+RunningBlockchain == CreateNetwork(2, <<10, 0>>, <<FALSE, TRUE>>)
 
 (*--algorithm p2p
 
