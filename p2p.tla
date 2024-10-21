@@ -5,14 +5,17 @@
 (***************************************************************************)
 EXTENDS TLC, Sequences, Naturals, FiniteSets, Utils, Blockchain
 
+\* Define the network to be used by the algorithm.
+CONSTANT RunningBlockchain
+
 \* Maximum number of blocks to be retrieved in a single getblocks response.
-MaxGetBlocksInvResponse == 3
+CONSTANT MaxGetBlocksInvResponse
+
+\* Maximum number of outbound connections a peer can have.
+CONSTANT MaxConnectionsPerPeer
 
 \* Difference in the SYNCHRONIZER process id so that it does not conflict with the LISTENER one.
 PeerProcessDiffId == 1000
-
-\* Define the network to be used by the algorithm.
-RunningBlockchain == CreateNetwork(2, <<10, 0>>, <<FALSE, TRUE>>)
 
 (*--algorithm p2p
 
@@ -20,9 +23,13 @@ variables
     \* Represent the whole universe of peers in the network with all of their data.
     the_network = RunningBlockchain;
 
-    \* Each peer has a channel to communicate with other peers. Each peer can establish a max of 3 connections.
+    \* Each peer has a channel to communicate with other peers. Number of connections is limited.
     channels = [i \in 1..Len(the_network) |->
-        [j \in 1..3 |-> [header |-> defaultInitValue, payload |-> defaultInitValue]]];
+        [j \in 1..MaxConnectionsPerPeer |-> [
+            header |-> defaultInitValue,
+            payload |-> defaultInitValue
+        ]]
+    ];
 
 define
     \* Import the operators used in the algorithm.
@@ -268,21 +275,21 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "89735483" /\ chksum(tla) = "d42aa36a")
-\* Parameter local_peer_id of procedure announce at line 33 col 20 changed to local_peer_id_
-\* Parameter remote_peer_id of procedure announce at line 33 col 35 changed to remote_peer_id_
-\* Parameter local_peer_id of procedure addr at line 48 col 16 changed to local_peer_id_a
-\* Parameter remote_peer_id of procedure addr at line 48 col 31 changed to remote_peer_id_a
-\* Parameter local_peer_id of procedure version at line 63 col 19 changed to local_peer_id_v
-\* Parameter remote_peer_id of procedure version at line 63 col 34 changed to remote_peer_id_v
-\* Parameter local_peer_id of procedure verack at line 77 col 18 changed to local_peer_id_ve
-\* Parameter remote_peer_id of procedure verack at line 77 col 33 changed to remote_peer_id_ve
-\* Parameter local_peer_id of procedure getblocks at line 85 col 21 changed to local_peer_id_g
-\* Parameter remote_peer_id of procedure getblocks at line 85 col 36 changed to remote_peer_id_g
-\* Parameter local_peer_id of procedure request_blocks at line 127 col 34 changed to local_peer_id_r
-\* Parameter remote_peer_id of procedure request_blocks at line 127 col 49 changed to remote_peer_id_r
-\* Parameter local_peer_id of procedure inv at line 140 col 15 changed to local_peer_id_i
-\* Parameter remote_peer_id of procedure inv at line 140 col 30 changed to remote_peer_id_i
+\* BEGIN TRANSLATION (chksum(pcal) = "898f97f0" /\ chksum(tla) = "e33e7c0e")
+\* Parameter local_peer_id of procedure announce at line 40 col 20 changed to local_peer_id_
+\* Parameter remote_peer_id of procedure announce at line 40 col 35 changed to remote_peer_id_
+\* Parameter local_peer_id of procedure addr at line 55 col 16 changed to local_peer_id_a
+\* Parameter remote_peer_id of procedure addr at line 55 col 31 changed to remote_peer_id_a
+\* Parameter local_peer_id of procedure version at line 70 col 19 changed to local_peer_id_v
+\* Parameter remote_peer_id of procedure version at line 70 col 34 changed to remote_peer_id_v
+\* Parameter local_peer_id of procedure verack at line 84 col 18 changed to local_peer_id_ve
+\* Parameter remote_peer_id of procedure verack at line 84 col 33 changed to remote_peer_id_ve
+\* Parameter local_peer_id of procedure getblocks at line 92 col 21 changed to local_peer_id_g
+\* Parameter remote_peer_id of procedure getblocks at line 92 col 36 changed to remote_peer_id_g
+\* Parameter local_peer_id of procedure request_blocks at line 134 col 34 changed to local_peer_id_r
+\* Parameter remote_peer_id of procedure request_blocks at line 134 col 49 changed to remote_peer_id_r
+\* Parameter local_peer_id of procedure inv at line 147 col 15 changed to local_peer_id_i
+\* Parameter remote_peer_id of procedure inv at line 147 col 30 changed to remote_peer_id_i
 CONSTANT defaultInitValue
 VARIABLES the_network, channels, pc, stack
 
@@ -310,8 +317,12 @@ ProcSet == (1 .. Len(RunningBlockchain)) \cup (PeerProcessDiffId + 1 .. PeerProc
 
 Init == (* Global variables *)
         /\ the_network = RunningBlockchain
-        /\ channels =        [i \in 1..Len(the_network) |->
-                      [j \in 1..3 |-> [header |-> defaultInitValue, payload |-> defaultInitValue]]]
+        /\ channels =            [i \in 1..Len(the_network) |->
+                          [j \in 1..MaxConnectionsPerPeer |-> [
+                              header |-> defaultInitValue,
+                              payload |-> defaultInitValue
+                          ]]
+                      ]
         (* Procedure announce *)
         /\ local_peer_id_ = [ self \in ProcSet |-> defaultInitValue]
         /\ remote_peer_id_ = [ self \in ProcSet |-> defaultInitValue]

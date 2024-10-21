@@ -37,4 +37,27 @@ CreateNetwork(numPeers, blockCounts, connections) ==
             chain_tip |-> [height |-> numBlocks, hash |-> lastBlockHash]
         ]
     ]
+
+(*
+    - 2 peers.
+    - 1 seeder with 1 block and no outbound connections.
+    - 1 peer with no blocks and an outbound connection to the seeder.
+*)
+Blockchain1 == CreateNetwork(2, <<1, 0>>, <<FALSE, TRUE>>)
+
+(*
+    - 2 peers.
+    - 1 seeder with 10 block and no outbound connections.
+    - 1 peer with no blocks and an outbound connection to the seeder.
+*)
+Blockchain2 == CreateNetwork(2, <<10, 0>>, <<FALSE, TRUE>>)
+
+(*
+    - 3 peers.
+    - 1 seeder with 1 block and no outbound connections.
+    - 1 peer with no blocks and an outbound connection to the seeder.
+    - 1 peer with no blocks and an outbound connection to the seeder.
+*)
+Blockchain3 == CreateNetwork(3, <<1, 0, 0>>, <<FALSE, TRUE, TRUE>>)
+
 ====
