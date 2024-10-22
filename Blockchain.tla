@@ -1,9 +1,16 @@
 ---- MODULE Blockchain ----
+(***********************************************************************)
+(* This module defines network initial conditions to be used by the    *)
+(* p2p algorithm.                                                      *)
+(*                                                                     *)
+(***********************************************************************)
 
 EXTENDS Integers, Sequences, TLC, Utils
 
-(* Create a network of peers with the given number of peers, block counts for each of them,
-and connections to be established. *)
+(***********************************************************************)
+(* Create a network with the given number of peers, the block count and*)
+(* connections to be established.                                      *)
+(***********************************************************************)
 CreateNetwork(numPeers, blockCounts, connections) ==
     [peer \in 1..numPeers |->
         LET numBlocks == blockCounts[peer]
@@ -38,47 +45,44 @@ CreateNetwork(numPeers, blockCounts, connections) ==
         ]
     ]
 
-(*
-    - 2 peers.
-    - 1 seeder with 1 block and no outbound connections.
-    - 1 peer with no blocks and an outbound connection to the seeder.
-*)
+(***********************************************************************)
+(* 2 peers network. 1 seeder with 1 block and no outbound connections  *)
+(* and 1 peer with no blocks and an outbound connection to the seeder. *)
+(***********************************************************************)
 Blockchain1 == CreateNetwork(2, <<1, 0>>, <<FALSE, TRUE>>)
 
-(*
-    - 2 peers.
-    - 1 seeder with 10 block and no outbound connections.
-    - 1 peer with no blocks and an outbound connection to the seeder.
-*)
+(***********************************************************************)
+(* 2 peers network. 1 seeder with 10 blocks and no outbound connections*)
+(* and 1 peer with no blocks and an outbound connection to the seeder. *)
+(***********************************************************************)
 Blockchain2 == CreateNetwork(2, <<10, 0>>, <<FALSE, TRUE>>)
 
-(*
-    - 3 peers.
-    - 1 seeder with 1 block and no outbound connections.
-    - 1 peer with no blocks and an outbound connection to the seeder.
-    - 1 peer with no blocks and an outbound connection to the seeder.
-*)
+(***********************************************************************)
+(* 3 peers network. 1 seeder with 1 block and no outbound connections  *)
+(* and 2 peers with no blocks and an outbound connection to the seeder.*)
+(***********************************************************************)
 Blockchain3 == CreateNetwork(3, <<1, 0, 0>>, <<FALSE, TRUE, TRUE>>)
 
-(*
-    - 1 peer with or without connections or blocks is an assert
-*)
+(***********************************************************************)
+(* 1 peer with or without connections or blocks is an assert           *)
+(***********************************************************************)
 Blockchain4 == CreateNetwork(1, <<0>>, <<TRUE>>)
 
-(*
-    - 2 or more peers without connections is a deadlock
-*)
+(***********************************************************************)
+(* 2 or more peers without connections is a deadlock                   *)
+(***********************************************************************)
 Blockchain5 == CreateNetwork(2, <<0, 0>>, <<FALSE, FALSE>>)
 
-(*
-    - 2 connected to each other with the same amount of blocks
-*)
+(***********************************************************************)
+(* 2 peers network. 2 connected to each other with the same amount of  *)
+(* blocks.                                                             *)
+(***********************************************************************)
 Blockchain6 == CreateNetwork(2, <<100, 100>>, <<TRUE, TRUE>>)
 
-(*
-    - 2 connected to each other with different amount of blocks
-*)
+(***********************************************************************)
+(* 2 peers network. 2 connected to each other with different amount of *)
+(* blocks.                                                             *)
+(***********************************************************************)
 Blockchain7 == CreateNetwork(2, <<2, 1>>, <<TRUE, TRUE>>)
-
 
 ====
