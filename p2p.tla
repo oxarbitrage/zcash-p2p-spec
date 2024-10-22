@@ -221,9 +221,9 @@ variables local_peer_index = self - PeerProcessDiffId, best_tip = 0;
 begin
     Announce:
         \* The network must have at least two peer.
-        await Len(the_network) >= 2;
+        assert Len(the_network) >= 2;
 
-        \* The peer set size must be at least 1.
+        \* The peer set size must be at least 1, ignoring the peers that are seeders only.
         await Len(the_network[local_peer_index].peer_set) > 0;
 
         \* Connect to each available peer we have.    
@@ -275,7 +275,7 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "898f97f0" /\ chksum(tla) = "e33e7c0e")
+\* BEGIN TRANSLATION (chksum(pcal) = "6acb42eb" /\ chksum(tla) = "4e4ceef9")
 \* Parameter local_peer_id of procedure announce at line 40 col 20 changed to local_peer_id_
 \* Parameter remote_peer_id of procedure announce at line 40 col 35 changed to remote_peer_id_
 \* Parameter local_peer_id of procedure addr at line 55 col 16 changed to local_peer_id_a
@@ -826,7 +826,8 @@ ListenerLoop(self) == /\ pc[self] = "ListenerLoop"
 LISTENER(self) == Listening(self) \/ Requests(self) \/ ListenerLoop(self)
 
 Announce(self) == /\ pc[self] = "Announce"
-                  /\ Len(the_network) >= 2
+                  /\ Assert(Len(the_network) >= 2, 
+                            "Failure of assertion at line 224, column 9.")
                   /\ Len(the_network[local_peer_index[self]].peer_set) > 0
                   /\ \E remote_peer_index \in 1..Len(the_network[local_peer_index[self]].peer_set):
                        /\ /\ local_peer_id_' = [local_peer_id_ EXCEPT ![self] = local_peer_index[self]]

@@ -60,4 +60,25 @@ Blockchain2 == CreateNetwork(2, <<10, 0>>, <<FALSE, TRUE>>)
 *)
 Blockchain3 == CreateNetwork(3, <<1, 0, 0>>, <<FALSE, TRUE, TRUE>>)
 
+(*
+    - 1 peer with or without connections or blocks is an assert
+*)
+Blockchain4 == CreateNetwork(1, <<0>>, <<TRUE>>)
+
+(*
+    - 2 or more peers without connections is a deadlock
+*)
+Blockchain5 == CreateNetwork(2, <<0, 0>>, <<FALSE, FALSE>>)
+
+(*
+    - 2 connected to each other with the same amount of blocks
+*)
+Blockchain6 == CreateNetwork(2, <<100, 100>>, <<TRUE, TRUE>>)
+
+(*
+    - 2 connected to each other with different amount of blocks
+*)
+Blockchain7 == CreateNetwork(2, <<2, 1>>, <<TRUE, TRUE>>)
+
+
 ====
