@@ -36,6 +36,30 @@ variables
 define
     \* Import the operators used in the algorithm.
     LOCAL Ops == INSTANCE Operators
+
+    (***********************************************************************)
+    (* This property checks for the existence of at least one execution    *)
+    (* path in which all peers eventually have the same chain tip. It      *)
+    (* ensures that there is a scenario in which synchronization occurs,   *)
+    (* but does NOT guarantee that synchronization will happen in every    *)
+    (* possible execution. This makes it an existential check, not a       *)
+    (* liveness property.                                                  *)
+    (***********************************************************************)
+    ExistsSyncPath ==
+        \E peer1, peer2 \in 1..Len(RunningBlockchain) :
+            <>(the_network[peer1].chain_tip = the_network[peer2].chain_tip)
+
+    (***********************************************************************)
+    (* Liveness: Eventually, all peers will have the same chain tip.       *)
+    (* This property ensures that synchronization will happen in every     *)
+    (* possible path.                                                      *)
+    (*                                                                     *)
+    (* Note: This property is not guaranteed to hold in the current        *)
+    (* implementation.                                                     *)
+    (***********************************************************************)
+    Liveness ==
+        \A peer1, peer2 \in 1..Len(RunningBlockchain) :
+            <>(the_network[peer1].chain_tip = the_network[peer2].chain_tip)
 end define;
 
 \* Announce the intention of a peer to connect with another in the network by sending an `addr` message.
@@ -272,31 +296,54 @@ begin
                     /\ channels[local_peer_index][remote_peer_index].header = defaultInitValue 
                     /\ channels[local_peer_index][remote_peer_index].payload = defaultInitValue;
             end with;
-            print "Peer is in sync!";
         end if;
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "6acb42eb" /\ chksum(tla) = "4e4ceef9")
-\* Parameter local_peer_id of procedure announce at line 40 col 20 changed to local_peer_id_
-\* Parameter remote_peer_id of procedure announce at line 40 col 35 changed to remote_peer_id_
-\* Parameter local_peer_id of procedure addr at line 55 col 16 changed to local_peer_id_a
-\* Parameter remote_peer_id of procedure addr at line 55 col 31 changed to remote_peer_id_a
-\* Parameter local_peer_id of procedure version at line 70 col 19 changed to local_peer_id_v
-\* Parameter remote_peer_id of procedure version at line 70 col 34 changed to remote_peer_id_v
-\* Parameter local_peer_id of procedure verack at line 84 col 18 changed to local_peer_id_ve
-\* Parameter remote_peer_id of procedure verack at line 84 col 33 changed to remote_peer_id_ve
-\* Parameter local_peer_id of procedure getblocks at line 92 col 21 changed to local_peer_id_g
-\* Parameter remote_peer_id of procedure getblocks at line 92 col 36 changed to remote_peer_id_g
-\* Parameter local_peer_id of procedure request_blocks at line 134 col 34 changed to local_peer_id_r
-\* Parameter remote_peer_id of procedure request_blocks at line 134 col 49 changed to remote_peer_id_r
-\* Parameter local_peer_id of procedure inv at line 147 col 15 changed to local_peer_id_i
-\* Parameter remote_peer_id of procedure inv at line 147 col 30 changed to remote_peer_id_i
+\* BEGIN TRANSLATION (chksum(pcal) = "9b0fbec8" /\ chksum(tla) = "ef85b7dc")
+\* Parameter local_peer_id of procedure announce at line 66 col 20 changed to local_peer_id_
+\* Parameter remote_peer_id of procedure announce at line 66 col 35 changed to remote_peer_id_
+\* Parameter local_peer_id of procedure addr at line 81 col 16 changed to local_peer_id_a
+\* Parameter remote_peer_id of procedure addr at line 81 col 31 changed to remote_peer_id_a
+\* Parameter local_peer_id of procedure version at line 96 col 19 changed to local_peer_id_v
+\* Parameter remote_peer_id of procedure version at line 96 col 34 changed to remote_peer_id_v
+\* Parameter local_peer_id of procedure verack at line 110 col 18 changed to local_peer_id_ve
+\* Parameter remote_peer_id of procedure verack at line 110 col 33 changed to remote_peer_id_ve
+\* Parameter local_peer_id of procedure getblocks at line 118 col 21 changed to local_peer_id_g
+\* Parameter remote_peer_id of procedure getblocks at line 118 col 36 changed to remote_peer_id_g
+\* Parameter local_peer_id of procedure request_blocks at line 160 col 34 changed to local_peer_id_r
+\* Parameter remote_peer_id of procedure request_blocks at line 160 col 49 changed to remote_peer_id_r
+\* Parameter local_peer_id of procedure inv at line 173 col 15 changed to local_peer_id_i
+\* Parameter remote_peer_id of procedure inv at line 173 col 30 changed to remote_peer_id_i
 CONSTANT defaultInitValue
 VARIABLES the_network, channels, pc, stack
 
 (* define statement *)
 LOCAL Ops == INSTANCE Operators
+
+
+
+
+
+
+
+
+
+ExistsSyncPath ==
+    \E peer1, peer2 \in 1..Len(RunningBlockchain) :
+        <>(the_network[peer1].chain_tip = the_network[peer2].chain_tip)
+
+
+
+
+
+
+
+
+
+Liveness ==
+    \A peer1, peer2 \in 1..Len(RunningBlockchain) :
+        <>(the_network[peer1].chain_tip = the_network[peer2].chain_tip)
 
 VARIABLES local_peer_id_, remote_peer_id_, local_peer_id_a, remote_peer_id_a, 
           local_peer_id_v, remote_peer_id_v, local_peer_id_ve, 
@@ -829,7 +876,7 @@ LISTENER(self) == Listening(self) \/ Requests(self) \/ ListenerLoop(self)
 
 Announce(self) == /\ pc[self] = "Announce"
                   /\ Assert(Len(the_network) >= 2, 
-                            "Failure of assertion at line 224, column 9.")
+                            "Failure of assertion at line 250, column 9.")
                   /\ Len(the_network[local_peer_index[self]].peer_set) > 0
                   /\ \E remote_peer_index \in 1..Len(the_network[local_peer_index[self]].peer_set):
                        /\ /\ local_peer_id_' = [local_peer_id_ EXCEPT ![self] = local_peer_index[self]]
@@ -910,7 +957,6 @@ CheckSync(self) == /\ pc[self] = "CheckSync"
                                      the_network[local_peer_index[self]].peer_set[remote_peer_index].established = TRUE
                                    /\ channels[local_peer_index[self]][remote_peer_index].header = defaultInitValue
                                    /\ channels[local_peer_index[self]][remote_peer_index].payload = defaultInitValue
-                              /\ PrintT("Peer is in sync!")
                               /\ pc' = [pc EXCEPT ![self] = "Done"]
                    /\ UNCHANGED << the_network, channels, stack, 
                                    local_peer_id_, remote_peer_id_, 
