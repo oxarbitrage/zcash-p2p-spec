@@ -2,13 +2,12 @@
 (***********************************************************************)
 (* This module defines network initial conditions to be used by the    *)
 (* p2p algorithm.                                                      *)
-(*                                                                     *)
 (***********************************************************************)
 
 EXTENDS Integers, Sequences, TLC, Utils
 
 (***********************************************************************)
-(* Create a network with the given number of peers, the block count and*)
+(* Create a network with given number of peers, the blocks and         *)
 (* connections to be established.                                      *)
 (***********************************************************************)
 CreateNetwork(numPeers, blockCounts, connections) ==
@@ -44,6 +43,8 @@ CreateNetwork(numPeers, blockCounts, connections) ==
             chain_tip |-> [height |-> numBlocks, hash |-> lastBlockHash]
         ]
     ]
+
+-------------------------------------------------------------------------
 
 (***********************************************************************)
 (* 2 peers network. 1 seeder with 1 block and no outbound connections  *)

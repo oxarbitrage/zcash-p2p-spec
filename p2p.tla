@@ -17,6 +17,8 @@ CONSTANT MaxConnectionsPerPeer
 \* Difference in the SYNCHRONIZER process id so that it does not conflict with the LISTENER one.
 PeerProcessDiffId == 1000
 
+-----------------------------------------------------------------------------
+
 (*--algorithm p2p
 
 variables
