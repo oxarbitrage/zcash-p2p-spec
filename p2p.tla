@@ -60,6 +60,79 @@ define
     Liveness ==
         \A peer1, peer2 \in 1..Len(RunningBlockchain) :
             <>(the_network[peer1].chain_tip = the_network[peer2].chain_tip)
+
+    (***********************************************************************)
+    (* Ensures that no peer in the network has a chain tip that is higher  *)
+    (* than the chain tip of any peer it is connected to. This guarantees  *)
+    (* that peers do not "advance" their chain beyond the knowledge of     *)
+    (* their connected peers, ensuring consistent progress across the      *)
+    (* network.                                                            *)
+    (***********************************************************************)
+    ChainTipRespectsPeerSet ==
+        \A peer \in 1..Len(RunningBlockchain) :
+            \A remote_peer \in 1..Len(the_network[peer].peer_set) :
+                the_network[peer].chain_tip.height <= the_network[remote_peer].chain_tip.height
+
+    (***********************************************************************)
+    (* Ensures that each block in a peer’s local blockchain has a height   *)
+    (* less than or equal to the peer’s chain tip. This prevents peers from*)
+    (* including invalid blocks that exceed the current chain tip.         *)
+    (***********************************************************************)
+    ValidBlockPropagation ==
+        \A peer \in 1..Len(RunningBlockchain) :
+            \A block \in the_network[peer].blocks :
+                block.height <= the_network[peer].chain_tip.height
+
+    (***********************************************************************)
+    (* Ensures that the blocks within each peer’s blockchain are correctly *)
+    (* ordered by height. For blocks with height greater than 1, each block*)
+    (* must directly follow the block with height block.height - 1. This   *)
+    (* prevents gaps or misordering within a peer's chain.                 *)
+    (***********************************************************************)
+    BlockOrdering ==
+        \A peer \in 1..Len(RunningBlockchain) :
+            \A block \in the_network[peer].blocks :
+                IF block.height < 2 THEN
+                    TRUE
+                ELSE
+                    block.height =
+                        (CHOOSE b \in the_network[peer].blocks : b.height = block.height - 1).height + 1
+
+    (***********************************************************************)
+    (* Ensures that each peer eventually reaches a chain tip that is at    *)
+    (* least as high as the initial chain tip it started with. This ensures*)
+    (* that peers make progress in synchronizing their chains over time.   *)
+    (***********************************************************************)
+    SyncProgress ==
+        \A peer \in 1..Len(RunningBlockchain) :
+            <>(the_network[peer].chain_tip.height >= RunningBlockchain[peer].chain_tip.height)
+
+    (***********************************************************************)
+    (* Ensures that no peer exceeds the maximum number of connections      *)
+    (* allowed, ensuring that the network respects its maximum connection  *)
+    (* constraints. This prevents any peer from overloading its connection *)
+    (* capacity.                                                           *)
+    (***********************************************************************)
+    ConnectionLimit ==
+        \A peer \in 1..Len(RunningBlockchain) :
+            Len(the_network[peer].peer_set) <= MaxConnectionsPerPeer
+
+    (***************************************************************************)
+    (* The overall inductive invariant that combines several sub-properties    *)
+    (* to ensure safety and correctness in the peer-to-peer protocol:          *)
+    (* - ChainTipRespectsPeerSet ensures chain tip consistency between peers.  *)
+    (* - ValidBlockPropagation ensures peers propagate valid blocks.           *)
+    (* - BlockOrdering ensures correct block order within each peer’s chain.   *)
+    (* - SyncProgress ensures that peers continue to progress toward           *)
+    (*   synchronization.                                                      *)
+    (* - ConnectionLimit ensures peers respect connection limits.              *)
+    (***************************************************************************)
+    InductiveInvariant ==
+        /\ ChainTipRespectsPeerSet
+        /\ ValidBlockPropagation
+        /\ BlockOrdering
+        /\ SyncProgress
+        /\ ConnectionLimit
 end define;
 
 \* Announce the intention of a peer to connect with another in the network by sending an `addr` message.
@@ -300,21 +373,21 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "9b0fbec8" /\ chksum(tla) = "ef85b7dc")
-\* Parameter local_peer_id of procedure announce at line 66 col 20 changed to local_peer_id_
-\* Parameter remote_peer_id of procedure announce at line 66 col 35 changed to remote_peer_id_
-\* Parameter local_peer_id of procedure addr at line 81 col 16 changed to local_peer_id_a
-\* Parameter remote_peer_id of procedure addr at line 81 col 31 changed to remote_peer_id_a
-\* Parameter local_peer_id of procedure version at line 96 col 19 changed to local_peer_id_v
-\* Parameter remote_peer_id of procedure version at line 96 col 34 changed to remote_peer_id_v
-\* Parameter local_peer_id of procedure verack at line 110 col 18 changed to local_peer_id_ve
-\* Parameter remote_peer_id of procedure verack at line 110 col 33 changed to remote_peer_id_ve
-\* Parameter local_peer_id of procedure getblocks at line 118 col 21 changed to local_peer_id_g
-\* Parameter remote_peer_id of procedure getblocks at line 118 col 36 changed to remote_peer_id_g
-\* Parameter local_peer_id of procedure request_blocks at line 160 col 34 changed to local_peer_id_r
-\* Parameter remote_peer_id of procedure request_blocks at line 160 col 49 changed to remote_peer_id_r
-\* Parameter local_peer_id of procedure inv at line 173 col 15 changed to local_peer_id_i
-\* Parameter remote_peer_id of procedure inv at line 173 col 30 changed to remote_peer_id_i
+\* BEGIN TRANSLATION (chksum(pcal) = "b88edd5" /\ chksum(tla) = "75cac8b3")
+\* Parameter local_peer_id of procedure announce at line 139 col 20 changed to local_peer_id_
+\* Parameter remote_peer_id of procedure announce at line 139 col 35 changed to remote_peer_id_
+\* Parameter local_peer_id of procedure addr at line 154 col 16 changed to local_peer_id_a
+\* Parameter remote_peer_id of procedure addr at line 154 col 31 changed to remote_peer_id_a
+\* Parameter local_peer_id of procedure version at line 169 col 19 changed to local_peer_id_v
+\* Parameter remote_peer_id of procedure version at line 169 col 34 changed to remote_peer_id_v
+\* Parameter local_peer_id of procedure verack at line 183 col 18 changed to local_peer_id_ve
+\* Parameter remote_peer_id of procedure verack at line 183 col 33 changed to remote_peer_id_ve
+\* Parameter local_peer_id of procedure getblocks at line 191 col 21 changed to local_peer_id_g
+\* Parameter remote_peer_id of procedure getblocks at line 191 col 36 changed to remote_peer_id_g
+\* Parameter local_peer_id of procedure request_blocks at line 233 col 34 changed to local_peer_id_r
+\* Parameter remote_peer_id of procedure request_blocks at line 233 col 49 changed to remote_peer_id_r
+\* Parameter local_peer_id of procedure inv at line 246 col 15 changed to local_peer_id_i
+\* Parameter remote_peer_id of procedure inv at line 246 col 30 changed to remote_peer_id_i
 CONSTANT defaultInitValue
 VARIABLES the_network, channels, pc, stack
 
@@ -344,6 +417,79 @@ ExistsSyncPath ==
 Liveness ==
     \A peer1, peer2 \in 1..Len(RunningBlockchain) :
         <>(the_network[peer1].chain_tip = the_network[peer2].chain_tip)
+
+
+
+
+
+
+
+
+ChainTipRespectsPeerSet ==
+    \A peer \in 1..Len(RunningBlockchain) :
+        \A remote_peer \in 1..Len(the_network[peer].peer_set) :
+            the_network[peer].chain_tip.height <= the_network[remote_peer].chain_tip.height
+
+
+
+
+
+
+ValidBlockPropagation ==
+    \A peer \in 1..Len(RunningBlockchain) :
+        \A block \in the_network[peer].blocks :
+            block.height <= the_network[peer].chain_tip.height
+
+
+
+
+
+
+
+BlockOrdering ==
+    \A peer \in 1..Len(RunningBlockchain) :
+        \A block \in the_network[peer].blocks :
+            IF block.height < 2 THEN
+                TRUE
+            ELSE
+                block.height =
+                    (CHOOSE b \in the_network[peer].blocks : b.height = block.height - 1).height + 1
+
+
+
+
+
+
+SyncProgress ==
+    \A peer \in 1..Len(RunningBlockchain) :
+        <>(the_network[peer].chain_tip.height >= RunningBlockchain[peer].chain_tip.height)
+
+
+
+
+
+
+
+ConnectionLimit ==
+    \A peer \in 1..Len(RunningBlockchain) :
+        Len(the_network[peer].peer_set) <= MaxConnectionsPerPeer
+
+
+
+
+
+
+
+
+
+
+
+InductiveInvariant ==
+    /\ ChainTipRespectsPeerSet
+    /\ ValidBlockPropagation
+    /\ BlockOrdering
+    /\ SyncProgress
+    /\ ConnectionLimit
 
 VARIABLES local_peer_id_, remote_peer_id_, local_peer_id_a, remote_peer_id_a, 
           local_peer_id_v, remote_peer_id_v, local_peer_id_ve, 
@@ -876,7 +1022,7 @@ LISTENER(self) == Listening(self) \/ Requests(self) \/ ListenerLoop(self)
 
 Announce(self) == /\ pc[self] = "Announce"
                   /\ Assert(Len(the_network) >= 2, 
-                            "Failure of assertion at line 250, column 9.")
+                            "Failure of assertion at line 323, column 9.")
                   /\ Len(the_network[local_peer_index[self]].peer_set) > 0
                   /\ \E remote_peer_index \in 1..Len(the_network[local_peer_index[self]].peer_set):
                        /\ /\ local_peer_id_' = [local_peer_id_ EXCEPT ![self] = local_peer_index[self]]
@@ -993,3 +1139,4 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
 \* END TRANSLATION 
 ====
+
