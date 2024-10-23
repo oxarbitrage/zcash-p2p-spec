@@ -117,6 +117,20 @@ define
         \A peer \in 1..Len(RunningBlockchain) :
             Len(the_network[peer].peer_set) <= MaxConnectionsPerPeer
 
+    (***********************************************************************)
+    (* Ensures that for any two peers, if they have blocks at the same     *)
+    (* height, the blocks must be identical in both content and hash. This *)
+    (* guarantees that no two peers hold blocks with the same height but   *)
+    (* different content, preventing inconsistencies and potential forks   *)
+    (* in the blockchain.                                                  *)
+    (***********************************************************************)
+    ConsistentBlocksAcrossPeers ==
+        \A peer1, peer2 \in 1..Len(RunningBlockchain) :
+            peer1 # peer2 =>
+                \A block1 \in the_network[peer1].blocks, block2 \in the_network[peer2].blocks :
+                    block1.height = block2.height =>
+                        block1.hash = block2.hash /\ block1.block = block2.block
+
     (***************************************************************************)
     (* The overall inductive invariant that combines several sub-properties    *)
     (* to ensure safety and correctness in the peer-to-peer protocol:          *)
@@ -133,6 +147,7 @@ define
         /\ BlockOrdering
         /\ SyncProgress
         /\ ConnectionLimit
+        /\ ConsistentBlocksAcrossPeers
 end define;
 
 \* Announce the intention of a peer to connect with another in the network by sending an `addr` message.
@@ -373,21 +388,21 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "b88edd5" /\ chksum(tla) = "75cac8b3")
-\* Parameter local_peer_id of procedure announce at line 139 col 20 changed to local_peer_id_
-\* Parameter remote_peer_id of procedure announce at line 139 col 35 changed to remote_peer_id_
-\* Parameter local_peer_id of procedure addr at line 154 col 16 changed to local_peer_id_a
-\* Parameter remote_peer_id of procedure addr at line 154 col 31 changed to remote_peer_id_a
-\* Parameter local_peer_id of procedure version at line 169 col 19 changed to local_peer_id_v
-\* Parameter remote_peer_id of procedure version at line 169 col 34 changed to remote_peer_id_v
-\* Parameter local_peer_id of procedure verack at line 183 col 18 changed to local_peer_id_ve
-\* Parameter remote_peer_id of procedure verack at line 183 col 33 changed to remote_peer_id_ve
-\* Parameter local_peer_id of procedure getblocks at line 191 col 21 changed to local_peer_id_g
-\* Parameter remote_peer_id of procedure getblocks at line 191 col 36 changed to remote_peer_id_g
-\* Parameter local_peer_id of procedure request_blocks at line 233 col 34 changed to local_peer_id_r
-\* Parameter remote_peer_id of procedure request_blocks at line 233 col 49 changed to remote_peer_id_r
-\* Parameter local_peer_id of procedure inv at line 246 col 15 changed to local_peer_id_i
-\* Parameter remote_peer_id of procedure inv at line 246 col 30 changed to remote_peer_id_i
+\* BEGIN TRANSLATION (chksum(pcal) = "c32f478e" /\ chksum(tla) = "ea53b5fc")
+\* Parameter local_peer_id of procedure announce at line 154 col 20 changed to local_peer_id_
+\* Parameter remote_peer_id of procedure announce at line 154 col 35 changed to remote_peer_id_
+\* Parameter local_peer_id of procedure addr at line 169 col 16 changed to local_peer_id_a
+\* Parameter remote_peer_id of procedure addr at line 169 col 31 changed to remote_peer_id_a
+\* Parameter local_peer_id of procedure version at line 184 col 19 changed to local_peer_id_v
+\* Parameter remote_peer_id of procedure version at line 184 col 34 changed to remote_peer_id_v
+\* Parameter local_peer_id of procedure verack at line 198 col 18 changed to local_peer_id_ve
+\* Parameter remote_peer_id of procedure verack at line 198 col 33 changed to remote_peer_id_ve
+\* Parameter local_peer_id of procedure getblocks at line 206 col 21 changed to local_peer_id_g
+\* Parameter remote_peer_id of procedure getblocks at line 206 col 36 changed to remote_peer_id_g
+\* Parameter local_peer_id of procedure request_blocks at line 248 col 34 changed to local_peer_id_r
+\* Parameter remote_peer_id of procedure request_blocks at line 248 col 49 changed to remote_peer_id_r
+\* Parameter local_peer_id of procedure inv at line 261 col 15 changed to local_peer_id_i
+\* Parameter remote_peer_id of procedure inv at line 261 col 30 changed to remote_peer_id_i
 CONSTANT defaultInitValue
 VARIABLES the_network, channels, pc, stack
 
@@ -481,6 +496,20 @@ ConnectionLimit ==
 
 
 
+ConsistentBlocksAcrossPeers ==
+    \A peer1, peer2 \in 1..Len(RunningBlockchain) :
+        peer1 # peer2 =>
+            \A block1 \in the_network[peer1].blocks, block2 \in the_network[peer2].blocks :
+                block1.height = block2.height =>
+                    block1.hash = block2.hash /\ block1.block = block2.block
+
+
+
+
+
+
+
+
 
 
 
@@ -490,6 +519,7 @@ InductiveInvariant ==
     /\ BlockOrdering
     /\ SyncProgress
     /\ ConnectionLimit
+    /\ ConsistentBlocksAcrossPeers
 
 VARIABLES local_peer_id_, remote_peer_id_, local_peer_id_a, remote_peer_id_a, 
           local_peer_id_v, remote_peer_id_v, local_peer_id_ve, 
@@ -1022,7 +1052,7 @@ LISTENER(self) == Listening(self) \/ Requests(self) \/ ListenerLoop(self)
 
 Announce(self) == /\ pc[self] = "Announce"
                   /\ Assert(Len(the_network) >= 2, 
-                            "Failure of assertion at line 323, column 9.")
+                            "Failure of assertion at line 338, column 9.")
                   /\ Len(the_network[local_peer_index[self]].peer_set) > 0
                   /\ \E remote_peer_index \in 1..Len(the_network[local_peer_index[self]].peer_set):
                        /\ /\ local_peer_id_' = [local_peer_id_ EXCEPT ![self] = local_peer_index[self]]
