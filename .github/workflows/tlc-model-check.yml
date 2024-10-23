@@ -17,11 +17,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Install Java (TLC requires Java to run)
+    # Install Java
     - name: Set up Java
       uses: actions/setup-java@v3
       with:
-        java-version: '11'
+        distribution: 'temurin'
+        java-version: '21'
 
     # Run the TLA+ Model Checker (TLC)
     - name: Run TLC model checker
