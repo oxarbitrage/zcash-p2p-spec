@@ -12,6 +12,16 @@ jobs:
   model_check:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        config: 
+          - configs/config1.cfg
+          - configs/config2.cfg
+          - configs/config3.cfg
+          - configs/config4.cfg
+          - configs/config5.cfg
+          - configs/config6.cfg
+          - configs/config7.cfg
     steps:
     # Checkout the repository
     - name: Checkout code
@@ -28,16 +38,7 @@ jobs:
     - name: Download TLC tools
       run: wget https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
 
-    # Find all .cfg files and run TLC for each
-    - name: Find and run all configuration files
+    # Run TLC model checker for each config
+    - name: Run TLC model checker for config ${{ matrix.config }}
       run: |
-        configs=$(ls ./configs/*.cfg)
-        for config in $configs; do
-          echo "::group::Running TLC on $config"
-          java -cp tla2tools.jar tlc2.TLC -config "$config" p2p.tla
-          if [ $? -ne 0 ]; then
-            echo "::error file=$config::TLC failed on $config"
-            exit 1
-          fi
-          echo "::endgroup::"
-        done
+        java -cp tla2tools.jar tlc2.TLC -config ${{ matrix.config }} p2p.tla
