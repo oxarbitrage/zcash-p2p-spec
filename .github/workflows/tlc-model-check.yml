@@ -28,4 +28,4 @@ jobs:
     - name: Run TLC model checker
       run: |
         wget https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
-        java -cp tla2tools.jar tlc2.TLC -deadlock -config p2p.cfg p2p.tla
+        java -cp tla2tools.jar tlc2.TLC -config p2p.cfg p2p.tla
