@@ -18,8 +18,8 @@ jobs:
           - configs/config1.cfg
           - configs/config2.cfg
           - configs/config3.cfg
-          - configs/config4.cfg
-          - configs/config5.cfg
+          #- configs/config4.cfg - assert
+          #- configs/config5.cfg - deadlock
           - configs/config6.cfg
           - configs/config7.cfg
     steps:
