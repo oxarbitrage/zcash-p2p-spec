@@ -10,6 +10,7 @@ Specifications are typically written to identify and fix bugs, justifying the ef
 
 - To learn more PlusCal and TLA+.
 - To formally define a blockchain synchronization algorithm.
+- To test properties (liveness, safety, etc) of the resulting algorithm.
 
 This is an ongoing project, and comments or contributions are highly encouraged.
 
@@ -31,12 +32,12 @@ The model operates based on initial network conditions stored in the `Blockchain
 
 To run the model, we use the [TLA+ for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=alygin.vscode-tlaplus) extension, which parses the PlusCal code into TLA+ and allows us to run the TLC model checker.
 
-The Blockchain.tla module includes different initial conditions, labeled as `BLOCKCHAIN1`, `BLOCKCHAIN2`, etc.
+The Blockchain.tla module includes different initial conditions, labeled as `Blockchain1`, `Blockchain2`, etc.
 
-In `p2p.tla`, you must update the RunningBlockchain variable to the desired network condition before running the model checker. For example:
+In `p2p.cfg` assign the desired conditions, for example:
 
 ```
-RunningBlockchain == BLOCKCHAIN5
+RunningBlockchain <- Blockchain7
 ```
 
 Then, run the TLC model checker against the parsed `p2p.tla` file.
