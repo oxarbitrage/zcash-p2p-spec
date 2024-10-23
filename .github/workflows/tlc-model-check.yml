@@ -24,8 +24,20 @@ jobs:
         distribution: 'temurin'
         java-version: '21'
 
-    # Run the TLA+ Model Checker (TLC)
-    - name: Run TLC model checker
+    # Download TLC tools
+    - name: Download TLC tools
+      run: wget https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
+
+    # Find all .cfg files and run TLC for each
+    - name: Find and run all configuration files
       run: |
-        wget https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
-        java -cp tla2tools.jar tlc2.TLC -config p2p.cfg p2p.tla
+        configs=$(ls ./configs/*.cfg)
+        for config in $configs; do
+          echo "::group::Running TLC on $config"
+          java -cp tla2tools.jar tlc2.TLC -config "$config" p2p.tla
+          if [ $? -ne 0 ]; then
+            echo "::error file=$config::TLC failed on $config"
+            exit 1
+          fi
+          echo "::endgroup::"
+        done
