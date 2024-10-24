@@ -13,9 +13,6 @@ EXTENDS Integers, Sequences, TLC, Utils
 CreateNetwork(numPeers, blockCounts, connections) ==
     [peer \in 1..numPeers |->
         LET numBlocks == blockCounts[peer]
-            lastBlockHash == IF numBlocks > 0
-                THEN "blockhash" \o ToString(numBlocks)
-            ELSE "blockhash0"
             \* Construct peer_set as a sequence of other peers, seeder nodes have no connections.
             peerSet == IF connections[peer] = TRUE THEN
                 Remove(
@@ -25,7 +22,7 @@ CreateNetwork(numPeers, blockCounts, connections) ==
                         tip |-> blockCounts[i],
                         established |-> FALSE
                     ]],
-                    \* Remove the current peer from the list.
+                    \* Remove the current peer from the list ...
                     [
                         address |-> "peer" \o ToString(peer),
                         tip |-> blockCounts[peer],
@@ -39,8 +36,7 @@ CreateNetwork(numPeers, blockCounts, connections) ==
                 hash |-> "blockhash" \o ToString(height),
                 block |-> "serialized block data " \o ToString(height)
             ]]),
-            peer_set |-> peerSet,
-            chain_tip |-> [height |-> numBlocks, hash |-> lastBlockHash]
+            peer_set |-> peerSet
         ]
     ]
 

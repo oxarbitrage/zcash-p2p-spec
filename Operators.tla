@@ -1,5 +1,5 @@
 ---- MODULE Operators ----
-LOCAL INSTANCE Naturals
+LOCAL INSTANCE Integers
 LOCAL INSTANCE Sequences
 LOCAL INSTANCE Utils
 VARIABLE the_network
@@ -26,8 +26,31 @@ FindBlocks(block_collection, start_height, end_height) ==
 \* Get the peer a peer from the network given a peer address.
 GetPeerFromNetwork(peer_address) == CHOOSE peer \in ToSet(the_network) : peer.peer = peer_address
 
+Max(S) == CHOOSE x \in S : \A y \in S : x >= y
+
 \* Get the chain tip of a peer given a peer address.
-GetPeerTip(peer_address) == (CHOOSE peer \in ToSet(the_network) : peer.peer = peer_address).chain_tip.height
+GetPeerTipByAddress(peer_address) ==
+    LET peer_blocks == (CHOOSE peer \in ToSet(the_network) : peer.peer = peer_address).blocks
+    IN IF peer_blocks = {} THEN
+        [height |-> 0, block |-> "serialized block data 0", hash |-> "blockhash 0"]
+    ELSE
+        CHOOSE block \in peer_blocks : block.height = Max({b.height : b \in peer_blocks})
+
+\* Get the chain tip of a peer given a peer index in the network.
+GetPeerTipByIndex(peer_index) ==
+    IF the_network[peer_index].blocks = {} THEN
+        [height |-> 0, block |-> "serialized block data 0", hash |-> "blockhash 0"]
+    ELSE
+        CHOOSE block \in the_network[peer_index].blocks : block.height =
+            Max({b.height : b \in the_network[peer_index].blocks})
+
+\* Get the chain tip of a peer given a peer index in the network.
+GetPeerTipByIndexAndNetwork(peer_index, network) ==
+    IF network[peer_index].blocks = {} THEN
+        [height |-> 0, block |-> "serialized block data 0", hash |-> "blockhash 0"]
+    ELSE
+        CHOOSE block \in network[peer_index].blocks : block.height =
+            Max({b.height : b \in network[peer_index].blocks})
 
 \* Get the blocks of a peer given a peer address.
 GetPeerBlocks(peer_address) == (CHOOSE peer \in ToSet(the_network) : peer.peer = peer_address).blocks

@@ -47,7 +47,7 @@ define
     (***********************************************************************)
     ExistsSyncPath ==
         \E peer1, peer2 \in 1..Len(RunningBlockchain) :
-            <>(the_network[peer1].chain_tip = the_network[peer2].chain_tip)
+            <>(Ops!GetPeerTipByIndex(peer1).height = Ops!GetPeerTipByIndex(peer2).height)
 
     (***********************************************************************)
     (* Liveness: Eventually, all peers will have the same chain tip.       *)
@@ -59,7 +59,7 @@ define
     (***********************************************************************)
     Liveness ==
         \A peer1, peer2 \in 1..Len(RunningBlockchain) :
-            <>(the_network[peer1].chain_tip = the_network[peer2].chain_tip)
+            <>(Ops!GetPeerTipByIndex(peer1).height = Ops!GetPeerTipByIndex(peer2).height)
 
     (***********************************************************************)
     (* Ensures that no peer in the network has a chain tip that is higher  *)
@@ -71,7 +71,7 @@ define
     ChainTipRespectsPeerSet ==
         \A peer \in 1..Len(RunningBlockchain) :
             \A remote_peer \in 1..Len(the_network[peer].peer_set) :
-                the_network[peer].chain_tip.height <= the_network[remote_peer].chain_tip.height
+                Ops!GetPeerTipByIndex(peer).height <= Ops!GetPeerTipByIndex(remote_peer).height
 
     (***********************************************************************)
     (* Ensures that each block in a peer’s local blockchain has a height   *)
@@ -81,7 +81,7 @@ define
     ValidBlockPropagation ==
         \A peer \in 1..Len(RunningBlockchain) :
             \A block \in the_network[peer].blocks :
-                block.height <= the_network[peer].chain_tip.height
+                block.height <= Ops!GetPeerTipByIndex(peer).height
 
     (***********************************************************************)
     (* Ensures that the blocks within each peer’s blockchain are correctly *)
@@ -105,7 +105,8 @@ define
     (***********************************************************************)
     SyncProgress ==
         \A peer \in 1..Len(RunningBlockchain) :
-            <>(the_network[peer].chain_tip.height >= RunningBlockchain[peer].chain_tip.height)
+            <>(Ops!GetPeerTipByIndex(peer).height >= 
+                Ops!GetPeerTipByIndexAndNetwork(peer, RunningBlockchain).height)
 
     (***********************************************************************)
     (* Ensures that no peer exceeds the maximum number of connections      *)
@@ -175,7 +176,7 @@ begin
                 addr_recv |-> the_network[local_peer_id].peer,
                 addr_trans |-> the_network[local_peer_id].peer_set[remote_peer_id].address,
                 start_height |-> 
-                    Ops!GetPeerTip(the_network[local_peer_id].peer_set[remote_peer_id].address)]
+                    Ops!GetPeerTipByAddress(the_network[local_peer_id].peer_set[remote_peer_id].address).height]
         ];
     return;
 end procedure;
@@ -272,19 +273,15 @@ end procedure;
 procedure getdata(local_peer_id, remote_peer_id)
 variables blocks_data;
 begin
-    Incorporate:
+    HandleGetDataMsg:
         blocks_data := [item \in 1..Len(channels[local_peer_id][remote_peer_id].payload.inventory) |->
             Ops!FindBlockByHash(
                 Ops!GetPeerBlocks(the_network[local_peer_id].peer_set[remote_peer_id].address),
                 channels[local_peer_id][remote_peer_id].payload.inventory[item].hash
             )
         ];
+    IncorporateBlocks:
         the_network[local_peer_id].blocks := the_network[local_peer_id].blocks \cup ToSet(blocks_data);
-    UpdateTip:
-        the_network[local_peer_id].chain_tip := [
-            height |-> blocks_data[Len(blocks_data)].height,
-            hash |-> blocks_data[Len(blocks_data)].hash
-        ];
     return;
 end procedure;
 
@@ -359,14 +356,14 @@ begin
                 /\ channels[local_peer_index][remote_peer_index].payload = defaultInitValue;
 
             \* Check if the local peer is behind the remote peer.
-            if the_network[local_peer_index].chain_tip.height <
+            if Ops!GetPeerTipByIndex(local_peer_index).height <
                 the_network[local_peer_index].peer_set[remote_peer_index].tip then
                 \* Request blocks.
-                if the_network[local_peer_index].chain_tip.height = 0 then
+                if Ops!GetPeerTipByIndex(local_peer_index).height = 0 then
                     call request_blocks(<<>>, local_peer_index, remote_peer_index);
                 else
                     call request_blocks(
-                        <<the_network[local_peer_index].chain_tip.hash>>,
+                        <<Ops!GetPeerTipByIndex(local_peer_index).hash>>,
                         local_peer_index,
                         remote_peer_index
                     );
@@ -374,8 +371,8 @@ begin
             end if;
         end with;
     CheckSync:
-        await the_network[local_peer_index].chain_tip.height > 0;
-        if the_network[local_peer_index].chain_tip.height < best_tip then
+        await Ops!GetPeerTipByIndex(local_peer_index).height > 0;
+        if Ops!GetPeerTipByIndex(local_peer_index).height < best_tip then
             goto RequestInventory;
         else
             \* Make sure all connections are still established and all communication channels are empty
@@ -388,21 +385,21 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "c32f478e" /\ chksum(tla) = "ea53b5fc")
-\* Parameter local_peer_id of procedure announce at line 154 col 20 changed to local_peer_id_
-\* Parameter remote_peer_id of procedure announce at line 154 col 35 changed to remote_peer_id_
-\* Parameter local_peer_id of procedure addr at line 169 col 16 changed to local_peer_id_a
-\* Parameter remote_peer_id of procedure addr at line 169 col 31 changed to remote_peer_id_a
-\* Parameter local_peer_id of procedure version at line 184 col 19 changed to local_peer_id_v
-\* Parameter remote_peer_id of procedure version at line 184 col 34 changed to remote_peer_id_v
-\* Parameter local_peer_id of procedure verack at line 198 col 18 changed to local_peer_id_ve
-\* Parameter remote_peer_id of procedure verack at line 198 col 33 changed to remote_peer_id_ve
-\* Parameter local_peer_id of procedure getblocks at line 206 col 21 changed to local_peer_id_g
-\* Parameter remote_peer_id of procedure getblocks at line 206 col 36 changed to remote_peer_id_g
-\* Parameter local_peer_id of procedure request_blocks at line 248 col 34 changed to local_peer_id_r
-\* Parameter remote_peer_id of procedure request_blocks at line 248 col 49 changed to remote_peer_id_r
-\* Parameter local_peer_id of procedure inv at line 261 col 15 changed to local_peer_id_i
-\* Parameter remote_peer_id of procedure inv at line 261 col 30 changed to remote_peer_id_i
+\* BEGIN TRANSLATION (chksum(pcal) = "fb1948d7" /\ chksum(tla) = "bceb3955")
+\* Parameter local_peer_id of procedure announce at line 155 col 20 changed to local_peer_id_
+\* Parameter remote_peer_id of procedure announce at line 155 col 35 changed to remote_peer_id_
+\* Parameter local_peer_id of procedure addr at line 170 col 16 changed to local_peer_id_a
+\* Parameter remote_peer_id of procedure addr at line 170 col 31 changed to remote_peer_id_a
+\* Parameter local_peer_id of procedure version at line 185 col 19 changed to local_peer_id_v
+\* Parameter remote_peer_id of procedure version at line 185 col 34 changed to remote_peer_id_v
+\* Parameter local_peer_id of procedure verack at line 199 col 18 changed to local_peer_id_ve
+\* Parameter remote_peer_id of procedure verack at line 199 col 33 changed to remote_peer_id_ve
+\* Parameter local_peer_id of procedure getblocks at line 207 col 21 changed to local_peer_id_g
+\* Parameter remote_peer_id of procedure getblocks at line 207 col 36 changed to remote_peer_id_g
+\* Parameter local_peer_id of procedure request_blocks at line 249 col 34 changed to local_peer_id_r
+\* Parameter remote_peer_id of procedure request_blocks at line 249 col 49 changed to remote_peer_id_r
+\* Parameter local_peer_id of procedure inv at line 262 col 15 changed to local_peer_id_i
+\* Parameter remote_peer_id of procedure inv at line 262 col 30 changed to remote_peer_id_i
 CONSTANT defaultInitValue
 VARIABLES the_network, channels, pc, stack
 
@@ -419,7 +416,7 @@ LOCAL Ops == INSTANCE Operators
 
 ExistsSyncPath ==
     \E peer1, peer2 \in 1..Len(RunningBlockchain) :
-        <>(the_network[peer1].chain_tip = the_network[peer2].chain_tip)
+        <>(Ops!GetPeerTipByIndex(peer1).height = Ops!GetPeerTipByIndex(peer2).height)
 
 
 
@@ -431,7 +428,7 @@ ExistsSyncPath ==
 
 Liveness ==
     \A peer1, peer2 \in 1..Len(RunningBlockchain) :
-        <>(the_network[peer1].chain_tip = the_network[peer2].chain_tip)
+        <>(Ops!GetPeerTipByIndex(peer1).height = Ops!GetPeerTipByIndex(peer2).height)
 
 
 
@@ -443,7 +440,7 @@ Liveness ==
 ChainTipRespectsPeerSet ==
     \A peer \in 1..Len(RunningBlockchain) :
         \A remote_peer \in 1..Len(the_network[peer].peer_set) :
-            the_network[peer].chain_tip.height <= the_network[remote_peer].chain_tip.height
+            Ops!GetPeerTipByIndex(peer).height <= Ops!GetPeerTipByIndex(remote_peer).height
 
 
 
@@ -453,7 +450,7 @@ ChainTipRespectsPeerSet ==
 ValidBlockPropagation ==
     \A peer \in 1..Len(RunningBlockchain) :
         \A block \in the_network[peer].blocks :
-            block.height <= the_network[peer].chain_tip.height
+            block.height <= Ops!GetPeerTipByIndex(peer).height
 
 
 
@@ -477,7 +474,8 @@ BlockOrdering ==
 
 SyncProgress ==
     \A peer \in 1..Len(RunningBlockchain) :
-        <>(the_network[peer].chain_tip.height >= RunningBlockchain[peer].chain_tip.height)
+        <>(Ops!GetPeerTipByIndex(peer).height >=
+            Ops!GetPeerTipByIndexAndNetwork(peer, RunningBlockchain).height)
 
 
 
@@ -624,7 +622,7 @@ SendVersionMsg(self) == /\ pc[self] = "SendVersionMsg"
                                                                                                                    addr_recv |-> the_network[local_peer_id_a[self]].peer,
                                                                                                                    addr_trans |-> the_network[local_peer_id_a[self]].peer_set[remote_peer_id_a[self]].address,
                                                                                                                    start_height |->
-                                                                                                                       Ops!GetPeerTip(the_network[local_peer_id_a[self]].peer_set[remote_peer_id_a[self]].address)]
+                                                                                                                       Ops!GetPeerTipByAddress(the_network[local_peer_id_a[self]].peer_set[remote_peer_id_a[self]].address).height]
                                                                                                            ]]
                         /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
                         /\ local_peer_id_a' = [local_peer_id_a EXCEPT ![self] = Head(stack[self]).local_peer_id_a]
@@ -816,52 +814,50 @@ SendGetDataMsg(self) == /\ pc[self] = "SendGetDataMsg"
 
 inv(self) == SendGetDataMsg(self)
 
-Incorporate(self) == /\ pc[self] = "Incorporate"
-                     /\ blocks_data' = [blocks_data EXCEPT ![self] =                [item \in 1..Len(channels[local_peer_id[self]][remote_peer_id[self]].payload.inventory) |->
-                                                                         Ops!FindBlockByHash(
-                                                                             Ops!GetPeerBlocks(the_network[local_peer_id[self]].peer_set[remote_peer_id[self]].address),
-                                                                             channels[local_peer_id[self]][remote_peer_id[self]].payload.inventory[item].hash
-                                                                         )
-                                                                     ]]
-                     /\ the_network' = [the_network EXCEPT ![local_peer_id[self]].blocks = the_network[local_peer_id[self]].blocks \cup ToSet(blocks_data'[self])]
-                     /\ pc' = [pc EXCEPT ![self] = "UpdateTip"]
-                     /\ UNCHANGED << channels, stack, local_peer_id_, 
-                                     remote_peer_id_, local_peer_id_a, 
-                                     remote_peer_id_a, local_peer_id_v, 
-                                     remote_peer_id_v, local_peer_id_ve, 
-                                     remote_peer_id_ve, local_peer_id_g, 
-                                     remote_peer_id_g, found_blocks, 
-                                     hash_count, block_header_hashes, 
-                                     remote_peer_blocks, start_height, 
-                                     end_height, hashes, local_peer_id_r, 
-                                     remote_peer_id_r, local_peer_id_i, 
-                                     remote_peer_id_i, local_peer_id, 
-                                     remote_peer_id, command, local_peer_index, 
-                                     best_tip >>
+HandleGetDataMsg(self) == /\ pc[self] = "HandleGetDataMsg"
+                          /\ blocks_data' = [blocks_data EXCEPT ![self] =                [item \in 1..Len(channels[local_peer_id[self]][remote_peer_id[self]].payload.inventory) |->
+                                                                              Ops!FindBlockByHash(
+                                                                                  Ops!GetPeerBlocks(the_network[local_peer_id[self]].peer_set[remote_peer_id[self]].address),
+                                                                                  channels[local_peer_id[self]][remote_peer_id[self]].payload.inventory[item].hash
+                                                                              )
+                                                                          ]]
+                          /\ pc' = [pc EXCEPT ![self] = "IncorporateBlocks"]
+                          /\ UNCHANGED << the_network, channels, stack, 
+                                          local_peer_id_, remote_peer_id_, 
+                                          local_peer_id_a, remote_peer_id_a, 
+                                          local_peer_id_v, remote_peer_id_v, 
+                                          local_peer_id_ve, remote_peer_id_ve, 
+                                          local_peer_id_g, remote_peer_id_g, 
+                                          found_blocks, hash_count, 
+                                          block_header_hashes, 
+                                          remote_peer_blocks, start_height, 
+                                          end_height, hashes, local_peer_id_r, 
+                                          remote_peer_id_r, local_peer_id_i, 
+                                          remote_peer_id_i, local_peer_id, 
+                                          remote_peer_id, command, 
+                                          local_peer_index, best_tip >>
 
-UpdateTip(self) == /\ pc[self] = "UpdateTip"
-                   /\ the_network' = [the_network EXCEPT ![local_peer_id[self]].chain_tip =                                         [
-                                                                                                height |-> blocks_data[self][Len(blocks_data[self])].height,
-                                                                                                hash |-> blocks_data[self][Len(blocks_data[self])].hash
-                                                                                            ]]
-                   /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
-                   /\ blocks_data' = [blocks_data EXCEPT ![self] = Head(stack[self]).blocks_data]
-                   /\ local_peer_id' = [local_peer_id EXCEPT ![self] = Head(stack[self]).local_peer_id]
-                   /\ remote_peer_id' = [remote_peer_id EXCEPT ![self] = Head(stack[self]).remote_peer_id]
-                   /\ stack' = [stack EXCEPT ![self] = Tail(stack[self])]
-                   /\ UNCHANGED << channels, local_peer_id_, remote_peer_id_, 
-                                   local_peer_id_a, remote_peer_id_a, 
-                                   local_peer_id_v, remote_peer_id_v, 
-                                   local_peer_id_ve, remote_peer_id_ve, 
-                                   local_peer_id_g, remote_peer_id_g, 
-                                   found_blocks, hash_count, 
-                                   block_header_hashes, remote_peer_blocks, 
-                                   start_height, end_height, hashes, 
-                                   local_peer_id_r, remote_peer_id_r, 
-                                   local_peer_id_i, remote_peer_id_i, command, 
-                                   local_peer_index, best_tip >>
+IncorporateBlocks(self) == /\ pc[self] = "IncorporateBlocks"
+                           /\ the_network' = [the_network EXCEPT ![local_peer_id[self]].blocks = the_network[local_peer_id[self]].blocks \cup ToSet(blocks_data[self])]
+                           /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
+                           /\ blocks_data' = [blocks_data EXCEPT ![self] = Head(stack[self]).blocks_data]
+                           /\ local_peer_id' = [local_peer_id EXCEPT ![self] = Head(stack[self]).local_peer_id]
+                           /\ remote_peer_id' = [remote_peer_id EXCEPT ![self] = Head(stack[self]).remote_peer_id]
+                           /\ stack' = [stack EXCEPT ![self] = Tail(stack[self])]
+                           /\ UNCHANGED << channels, local_peer_id_, 
+                                           remote_peer_id_, local_peer_id_a, 
+                                           remote_peer_id_a, local_peer_id_v, 
+                                           remote_peer_id_v, local_peer_id_ve, 
+                                           remote_peer_id_ve, local_peer_id_g, 
+                                           remote_peer_id_g, found_blocks, 
+                                           hash_count, block_header_hashes, 
+                                           remote_peer_blocks, start_height, 
+                                           end_height, hashes, local_peer_id_r, 
+                                           remote_peer_id_r, local_peer_id_i, 
+                                           remote_peer_id_i, command, 
+                                           local_peer_index, best_tip >>
 
-getdata(self) == Incorporate(self) \/ UpdateTip(self)
+getdata(self) == HandleGetDataMsg(self) \/ IncorporateBlocks(self)
 
 Listening(self) == /\ pc[self] = "Listening"
                    /\ Len(the_network) >= 2
@@ -1004,7 +1000,7 @@ Requests(self) == /\ pc[self] = "Requests"
                                                                                                                                      remote_peer_id |->  remote_peer_id[self] ] >>
                                                                                                                                  \o stack[self]]
                                                                                          /\ blocks_data' = [blocks_data EXCEPT ![self] = defaultInitValue]
-                                                                                         /\ pc' = [pc EXCEPT ![self] = "Incorporate"]
+                                                                                         /\ pc' = [pc EXCEPT ![self] = "HandleGetDataMsg"]
                                                                                     ELSE /\ pc' = [pc EXCEPT ![self] = "ListenerLoop"]
                                                                                          /\ UNCHANGED << stack, 
                                                                                                          local_peer_id, 
@@ -1052,7 +1048,7 @@ LISTENER(self) == Listening(self) \/ Requests(self) \/ ListenerLoop(self)
 
 Announce(self) == /\ pc[self] = "Announce"
                   /\ Assert(Len(the_network) >= 2, 
-                            "Failure of assertion at line 338, column 9.")
+                            "Failure of assertion at line 335, column 9.")
                   /\ Len(the_network[local_peer_index[self]].peer_set) > 0
                   /\ \E remote_peer_index \in 1..Len(the_network[local_peer_index[self]].peer_set):
                        /\ /\ local_peer_id_' = [local_peer_id_ EXCEPT ![self] = local_peer_index[self]]
@@ -1084,9 +1080,9 @@ RequestInventory(self) == /\ pc[self] = "RequestInventory"
                                           /\ UNCHANGED best_tip
                                /\   channels[local_peer_index[self]][remote_peer_index].header = defaultInitValue
                                   /\ channels[local_peer_index[self]][remote_peer_index].payload = defaultInitValue
-                               /\ IF the_network[local_peer_index[self]].chain_tip.height <
+                               /\ IF Ops!GetPeerTipByIndex(local_peer_index[self]).height <
                                       the_network[local_peer_index[self]].peer_set[remote_peer_index].tip
-                                     THEN /\ IF the_network[local_peer_index[self]].chain_tip.height = 0
+                                     THEN /\ IF Ops!GetPeerTipByIndex(local_peer_index[self]).height = 0
                                                 THEN /\ /\ hashes' = [hashes EXCEPT ![self] = <<>>]
                                                         /\ local_peer_id_r' = [local_peer_id_r EXCEPT ![self] = local_peer_index[self]]
                                                         /\ remote_peer_id_r' = [remote_peer_id_r EXCEPT ![self] = remote_peer_index]
@@ -1097,7 +1093,7 @@ RequestInventory(self) == /\ pc[self] = "RequestInventory"
                                                                                                  remote_peer_id_r |->  remote_peer_id_r[self] ] >>
                                                                                              \o stack[self]]
                                                      /\ pc' = [pc EXCEPT ![self] = "SendGetBlocksMsg"]
-                                                ELSE /\ /\ hashes' = [hashes EXCEPT ![self] = <<the_network[local_peer_index[self]].chain_tip.hash>>]
+                                                ELSE /\ /\ hashes' = [hashes EXCEPT ![self] = <<Ops!GetPeerTipByIndex(local_peer_index[self]).hash>>]
                                                         /\ local_peer_id_r' = [local_peer_id_r EXCEPT ![self] = local_peer_index[self]]
                                                         /\ remote_peer_id_r' = [remote_peer_id_r EXCEPT ![self] = remote_peer_index]
                                                         /\ stack' = [stack EXCEPT ![self] = << [ procedure |->  "request_blocks",
@@ -1126,8 +1122,8 @@ RequestInventory(self) == /\ pc[self] = "RequestInventory"
                                           local_peer_index >>
 
 CheckSync(self) == /\ pc[self] = "CheckSync"
-                   /\ the_network[local_peer_index[self]].chain_tip.height > 0
-                   /\ IF the_network[local_peer_index[self]].chain_tip.height < best_tip[self]
+                   /\ Ops!GetPeerTipByIndex(local_peer_index[self]).height > 0
+                   /\ IF Ops!GetPeerTipByIndex(local_peer_index[self]).height < best_tip[self]
                          THEN /\ pc' = [pc EXCEPT ![self] = "RequestInventory"]
                          ELSE /\ \E remote_peer_index \in 1..Len(the_network[local_peer_index[self]].peer_set):
                                      the_network[local_peer_index[self]].peer_set[remote_peer_index].established = TRUE
