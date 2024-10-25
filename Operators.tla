@@ -1,4 +1,8 @@
 ---- MODULE Operators ----
+(*****************************************************************************)
+(* This module defines comment operations that can be applied to the network *)
+(* by the p2p algorithm.                                                     *)
+(*****************************************************************************)
 LOCAL INSTANCE Integers
 LOCAL INSTANCE Sequences
 LOCAL INSTANCE Utils
