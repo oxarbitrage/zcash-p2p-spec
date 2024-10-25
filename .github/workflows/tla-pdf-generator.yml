@@ -1,0 +1,53 @@
+name: TLA+ PDF Generation
+
+on:
+  push:
+    paths:
+      - 'p2p.tla'
+      - 'Blockchain.tla'
+      - 'Utils.tla'
+      - 'Operations.tla'
+
+jobs:
+  generate_pdf:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Install Java
+    - name: Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    # Install LaTeX and Ghostscript for PDF generation
+    - name: Install LaTeX and Ghostscript
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y texlive-latex-base texlive-latex-extra texlive-fonts-recommended ghostscript
+
+    # Download TLA+ Tools for PDF generation
+    - name: Download TLA+ Tools
+      run: |
+        wget https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
+
+    # Generate PS file
+    - name: Generate PostScript (PS) file
+      run: |
+        java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade p2p.tla
+
+    # Convert PS to PDF
+    - name: Convert PS to PDF
+      run: |
+        ps2pdf p2p.ps p2p.pdf
+
+    # Upload PDF as an artifact in a documents directory
+    - name: Upload PDF Specification
+      uses: actions/upload-artifact@v3
+      with:
+        name: TLA+ Specification PDF
+        path: p2p.pdf
+        destination: documents/p2p.pdf
