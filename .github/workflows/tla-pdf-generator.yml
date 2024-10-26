@@ -6,7 +6,7 @@ on:
       - 'p2p.tla'
       - 'Blockchain.tla'
       - 'Utils.tla'
-      - 'Operations.tla'
+      - 'Operators.tla'
   workflow_dispatch:
 
 jobs:
@@ -51,10 +51,10 @@ jobs:
         java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade Utils.tla
         ps2pdf Utils.ps Utils.pdf
 
-    - name: Generate PDF for Operations.tla
+    - name: Generate PDF for Operators.tla
       run: |
-        java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade Operations.tla
-        ps2pdf Operations.ps Operations.pdf
+        java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade Operators.tla
+        ps2pdf Operators.ps Operators.pdf
 
     # Upload PDFs as artifacts in a documents directory
     - name: Upload PDF Artifacts
@@ -65,4 +65,4 @@ jobs:
           p2p.pdf
           Blockchain.pdf
           Utils.pdf
-          Operations.pdf
+          Operators.pdf
