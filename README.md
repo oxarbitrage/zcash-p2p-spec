@@ -16,10 +16,10 @@ This is an ongoing project, and comments or contributions are highly encouraged.
 
 ## Project Structure
 
-The project consists of several files, with `p2p.tla` being the core specification. The algorithm is implemented in PlusCal.
+The project consists of several files, with `p2p.tla` being the core specification. The distriubted algorithm is implemented in PlusCal while additional files are pure TLA+.
 
 - [Spec](p2p.tla)
-- [PDF]()
+- [PDF's](documents/)
 - [Blockchain](Blockchain.tla)
 - [Operators](Operators.tla)
 - [Utils](Utils.tla)
