@@ -2,6 +2,8 @@ name: TLA+ PDF Generation
 
 on:
   push:
+    branches:
+      - main
     paths:
       - 'p2p.tla'
       - 'Blockchain.tla'
@@ -16,6 +18,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
+      with:
+        persist-credentials: true
 
     # Install Java
     - name: Set up Java
@@ -36,54 +40,25 @@ jobs:
         wget https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
 
     # Generate PDFs for each TLA+ file
-    - name: Generate PDF for p2p.tla
+    - name: Generate PDF for TLA+ files
       run: |
         java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade p2p.tla
         ps2pdf p2p.ps p2p.pdf
-
-    - name: Generate PDF for Blockchain.tla
-      run: |
         java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade Blockchain.tla
         ps2pdf Blockchain.ps Blockchain.pdf
-
-    - name: Generate PDF for Utils.tla
-      run: |
         java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade Utils.tla
         ps2pdf Utils.ps Utils.pdf
-
-    - name: Generate PDF for Operators.tla
-      run: |
         java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade Operators.tla
         ps2pdf Operators.ps Operators.pdf
 
-    # Upload p2p PDF
-    - name: Upload p2p Artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: p2p PDF
-        path:
-          p2p.pdf
+    # Move PDFs to documents directory
+    - name: Move PDFs to documents folder
+      run: mv -f p2p.pdf Blockchain.pdf Utils.pdf Operators.pdf documents/
 
-    # Upload Blockchain PDF
-    - name: Blockchain PDF
-      uses: actions/upload-artifact@v3
+    # Commit and push PDF files to the documents directory
+    - name: Push documents
+      uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        name: Blockchain PDF
-        path:
-          Blockchain.pdf
+        file_pattern: 'documents/*.pdf'
+        commit_message: 'Add generated PDFs to documents directory'
 
-    # Upload Utils PDF
-    - name: Utils PDF
-      uses: actions/upload-artifact@v3
-      with:
-        name: Utils PDF
-        path:
-          Utils.pdf
-
-    # Upload Operators PDF
-    - name: Operators PDF
-      uses: actions/upload-artifact@v3
-      with:
-        name: Operators PDF
-        path:
-          Operators.pdf
