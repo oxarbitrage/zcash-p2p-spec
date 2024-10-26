@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  generate_pdf:
+  generate_pdfs:
     runs-on: ubuntu-latest
 
     steps:
@@ -35,20 +35,34 @@ jobs:
       run: |
         wget https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
 
-    # Generate PS file
-    - name: Generate PostScript (PS) file
+    # Generate PDFs for each TLA+ file
+    - name: Generate PDF for p2p.tla
       run: |
         java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade p2p.tla
-
-    # Convert PS to PDF
-    - name: Convert PS to PDF
-      run: |
         ps2pdf p2p.ps p2p.pdf
 
-    # Upload PDF as an artifact in a documents directory
-    - name: Upload PDF Specification
+    - name: Generate PDF for Blockchain.tla
+      run: |
+        java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade Blockchain.tla
+        ps2pdf Blockchain.ps Blockchain.pdf
+
+    - name: Generate PDF for Utils.tla
+      run: |
+        java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade Utils.tla
+        ps2pdf Utils.ps Utils.pdf
+
+    - name: Generate PDF for Operations.tla
+      run: |
+        java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade Operations.tla
+        ps2pdf Operations.ps Operations.pdf
+
+    # Upload PDFs as artifacts in a documents directory
+    - name: Upload PDF Artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: TLA+ Specification PDF
-        path: p2p.pdf
-        destination: documents/p2p.pdf
+        name: TLA+ Specification PDFs
+        path: |
+          p2p.pdf
+          Blockchain.pdf
+          Utils.pdf
+          Operations.pdf
