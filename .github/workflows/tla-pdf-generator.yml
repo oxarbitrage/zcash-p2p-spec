@@ -56,13 +56,34 @@ jobs:
         java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade Operators.tla
         ps2pdf Operators.ps Operators.pdf
 
-    # Upload PDFs as artifacts in a documents directory
-    - name: Upload PDF Artifacts
+    # Upload p2p PDF
+    - name: Upload p2p Artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: TLA+ Specification PDFs
-        path: |
+        name: p2p PDF
+        path:
           p2p.pdf
+
+    # Upload Blockchain PDF
+    - name: Blockchain PDF
+      uses: actions/upload-artifact@v3
+      with:
+        name: Blockchain PDF
+        path:
           Blockchain.pdf
+
+    # Upload Utils PDF
+    - name: Utils PDF
+      uses: actions/upload-artifact@v3
+      with:
+        name: Utils PDF
+        path:
           Utils.pdf
+
+    # Upload Operators PDF
+    - name: Operators PDF
+      uses: actions/upload-artifact@v3
+      with:
+        name: Operators PDF
+        path:
           Operators.pdf
