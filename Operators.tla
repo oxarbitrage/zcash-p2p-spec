@@ -1,8 +1,8 @@
 ---- MODULE Operators ----
-(*****************************************************************************)
-(* This module defines comment operations that can be applied to the network *)
-(* by the p2p algorithm.                                                     *)
-(*****************************************************************************)
+(***********************************************************************************)
+(* This module defines common operations that can be applied to the representation *)
+(* of the network that is used by the p2p algorithm.                               *)
+(***********************************************************************************)
 LOCAL INSTANCE Integers
 LOCAL INSTANCE Sequences
 LOCAL INSTANCE Utils
@@ -20,17 +20,14 @@ UpdatePeerSet(local_peer_address, remote_peer_address) == [i \in 1..Len(the_netw
 ]
 
 \* Given a block collection, a start height and an end height, returns the blocks in the given range.
-
 FindBlocks(block_collection, start_height, end_height) == 
     { b \in block_collection :
         /\ b.height >= start_height
         /\ b.height <= end_height
     }
 
-\* Get the peer a peer from the network given a peer address.
+\* Get the full data of a peer from the network given a peer address.
 GetPeerFromNetwork(peer_address) == CHOOSE peer \in ToSet(the_network) : peer.peer = peer_address
-
-Max(S) == CHOOSE x \in S : \A y \in S : x >= y
 
 \* Get the chain tip of a peer given a peer address.
 GetPeerTipByAddress(peer_address) ==
@@ -40,7 +37,7 @@ GetPeerTipByAddress(peer_address) ==
     ELSE
         CHOOSE block \in peer_blocks : block.height = Max({b.height : b \in peer_blocks})
 
-\* Get the chain tip of a peer given a peer index in the network.
+\* Get the chain tip of a peer given a peer index of the network.
 GetPeerTipByIndex(peer_index) ==
     IF the_network[peer_index].blocks = {} THEN
         [height |-> 0, block |-> "serialized block data 0", hash |-> "blockhash 0"]
@@ -48,7 +45,7 @@ GetPeerTipByIndex(peer_index) ==
         CHOOSE block \in the_network[peer_index].blocks : block.height =
             Max({b.height : b \in the_network[peer_index].blocks})
 
-\* Get the chain tip of a peer given a peer index in the network.
+\* Get the chain tip of a peer given a peer index of the network and the network.
 GetPeerTipByIndexAndNetwork(peer_index, network) ==
     IF network[peer_index].blocks = {} THEN
         [height |-> 0, block |-> "serialized block data 0", hash |-> "blockhash 0"]

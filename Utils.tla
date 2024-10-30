@@ -1,10 +1,17 @@
 -------------------------------- MODULE Utils -------------------------------
+(************************************************************************************)
+(* This module has general utilities most of them are from the community modules.   *)
+(*                                                                                  *)
+(* https://github.com/tlaplus/CommunityModules/blob/master/modules/SequencesExt.tla *)
+(************************************************************************************)
 LOCAL INSTANCE Sequences
 LOCAL INSTANCE Naturals
 LOCAL INSTANCE FiniteSets
 
+\* Given a set of numbers, returns the maximum number.
+Max(S) == CHOOSE x \in S : \A y \in S : x >= y
 
-\* Utilities from the community modules:
+-----------------------------------------------------------------------------
 
 (***************************************************************************)
 (* A function is injective iff it maps each element in its domain to a     *)
