@@ -10,7 +10,7 @@ Specifications are typically written to identify and fix bugs, justifying the ef
 
 - To learn more PlusCal and TLA+.
 - To formally define a blockchain synchronization algorithm.
-- To test properties (liveness, safety, etc) of the resulting algorithm.
+- To prove properties (liveness, safety, etc) of the resulting algorithm.
 
 This is an ongoing project, and comments or contributions are highly encouraged.
 
@@ -26,7 +26,7 @@ The project consists of several files, with `p2p.tla` being the core specificati
 
 ## Model Overview
 
-The model operates based on initial network conditions stored in the `Blockchain.tla` module. Variables such as the number of peers, the blocks each peer holds, and the peer set of each peer influence the model's state and behavior during model checking with TLC.
+The model operates based on initial network conditions defined in the `Blockchain.tla` module. Variables such as the number of peers, the blocks each peer holds, and the peer set of each peer influence the model's state and behavior during model checking with TLC.
 
 ### Running the Model
 
@@ -70,7 +70,7 @@ The following diagram assumes a network of three peers (peer1, peer2, and peer3)
 
 ```mermaid
 flowchart TD
-SYNCHRONIZER[[SYNCHRONIZER]] --> announce
+SYNCHRONIZER[[SYNCHRONIZER]] --> |For peer2|announce
 announce --> |Connect|peer1
 announce --> |Connect|peer3
 sync --> |Request blocks|peer1
@@ -82,7 +82,7 @@ sync ---> |Peer in sync|terminate
 
 ### Single Peer Synchronization
 
-Let's now consider a network with two peers (peer1 and peer2), where peer1 is in the `peer_set` of peer2. The following diagram shows how the `SYNCHRONIZER` and `LISTENER` processes interact to synchronize peer2 with peer1 at the message level.
+Let's now consider a network with just two peers (peer1 and peer2), where peer1 is in the `peer_set` of peer2 and has blocks. The following diagram shows how the `SYNCHRONIZER` and `LISTENER` processes interact to synchronize peer2 with the rest of the network (peer1) at the message level.
 
 ```mermaid
 flowchart TD
@@ -93,7 +93,7 @@ LISTENER --> |Listen|getblocks
 LISTENER --> |Listen|inv
 LISTENER --> |Listen|getdata
 
-SYNCHRONIZER[[SYNCHRONIZER]] --> announce
+SYNCHRONIZER[[SYNCHRONIZER]] --> |For peer2|announce
 announce --> |Start Connecting|send_addr_msg([SendAddrMsg])
 send_addr_msg --> |Process|addr
 addr --> |Start Hansdhake|send_version_msg([SendVersionMsg])
@@ -114,7 +114,7 @@ incorporate --> |Sync loop|sync
 incorporate --> |End algorithm|terminate
 ```
 
-### Multi-Peer Synchronization
+### Load balancing
 
 In a network with three peers (peer1, peer2, and peer3), where only peer2 has peers in its `peer_set` (specifically, peer1 and peer3), the following sequence occurs:
 
