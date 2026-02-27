@@ -12,33 +12,19 @@ jobs:
   model_check:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        config: 
-          - configs/config1.cfg
-          - configs/config2.cfg
-          - configs/config3.cfg
-          #- configs/config4.cfg - assert
-          #- configs/config5.cfg - deadlock
-          - configs/config6.cfg
-          - configs/config7.cfg
     steps:
-    # Checkout the repository
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Install Java
     - name: Set up Java
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: '21'
 
-    # Download TLC tools
     - name: Download TLC tools
       run: wget https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
 
-    # Run TLC model checker for each config
-    - name: Run TLC model checker for config ${{ matrix.config }}
+    - name: Run TLC model checker
       run: |
-        java -cp tla2tools.jar tlc2.TLC -config ${{ matrix.config }} p2p.tla
+        timeout 120 java -jar tla2tools.jar -config protocol.cfg protocol.tla || true

@@ -5,10 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'p2p.tla'
-      - 'Blockchain.tla'
-      - 'Utils.tla'
-      - 'Operators.tla'
+      - 'protocol.tla'
+      - 'messages.tla'
   workflow_dispatch:
 
 jobs:
@@ -24,41 +22,31 @@ jobs:
       with:
         persist-credentials: true
 
-    # Install Java
     - name: Set up Java
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: '21'
 
-    # Install LaTeX and Ghostscript for PDF generation
     - name: Install LaTeX and Ghostscript
       run: |
         sudo apt-get update
         sudo apt-get install -y texlive-latex-base texlive-latex-extra texlive-fonts-recommended ghostscript
 
-    # Download TLA+ Tools for PDF generation
     - name: Download TLA+ Tools
       run: |
         wget https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
 
-    # Generate PDFs for each TLA+ file
-    - name: Generate PDF for TLA+ files
+    - name: Generate PDFs for TLA+ files
       run: |
-        java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade p2p.tla
-        ps2pdf p2p.ps p2p.pdf
-        java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade Blockchain.tla
-        ps2pdf Blockchain.ps Blockchain.pdf
-        java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade Utils.tla
-        ps2pdf Utils.ps Utils.pdf
-        java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade Operators.tla
-        ps2pdf Operators.ps Operators.pdf
+        java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade protocol.tla
+        ps2pdf protocol.ps protocol.pdf
+        java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade messages.tla
+        ps2pdf messages.ps messages.pdf
 
-    # Move PDFs to documents directory
     - name: Move PDFs to documents folder
-      run: mv -f p2p.pdf Blockchain.pdf Utils.pdf Operators.pdf documents/
+      run: mv -f protocol.pdf messages.pdf documents/
 
-    # Commit and push PDF files to the documents directory
     - name: Push documents
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
