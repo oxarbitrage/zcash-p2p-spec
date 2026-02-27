@@ -1,7 +1,7 @@
 ---- MODULE protocol ----
 (* https://zips.z.cash/zip-0204 *)
 
-EXTENDS TLC, Naturals, Sequences, FiniteSets
+EXTENDS TLC, Naturals, Sequences, FiniteSets, messages
 
 CONSTANT InitialPeers
 CONSTANT MaxBlock
@@ -33,66 +33,24 @@ VersionMsg ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
             /\ Len(nodes[n].channels[m]) = 0
-            /\ 
-                LET
-                    version == [
-                        header |-> [
-                            magic |-> 619259748,
-                            command |-> "version",
-                            length |-> 0,
-                            checksum |-> 0
-                        ],
-                        payload |-> [
-                            version |-> 70015,
-                            services |-> 0,
-                            timestamp |-> clock,
-                            addr_recv |-> m,
-                            addr_from |-> n,
-                            nonce |-> 0,
-                            user_agent |-> "",
-                            start_height |-> Cardinality(nodes[n].blocks),
-                            relay |-> FALSE
-                        ]
-                    ]
-                    base == nodes[n].channels[m] IN
-                /\ nodes' = [ nodes EXCEPT ![n].channels[m] = Append(base, version) ]
-                /\ UNCHANGED << clock >>
+            /\ nodes' = [ nodes EXCEPT ![n].channels[m] = Append(@, MakeVersion(n, m, clock, nodes[n].blocks)) ]
+            /\ UNCHANGED << clock >>
 
 VerackMsg ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
             /\ Len(nodes[n].channels[m]) >= 1
             /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "version"
-            /\ LET
-                    verack == [
-                        header |-> [
-                            magic |-> 619259748,
-                            command |-> "verack",
-                            length |-> 0,
-                            checksum |-> 0
-                        ]
-                    ]
-                    base == nodes[n].channels[m] 
-                IN
-                    /\ nodes' = [ nodes EXCEPT
-                            ![n].channels[m] = Append(base, verack),
-                            ![n].last_recv_at[m] = clock ]
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].channels[m]    = Append(@, MakeVerack),
+                    ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 PingMessage == 
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
             /\ nodes[n].last_recv_at[m] <= clock - 3
-            /\ LET
-                    ping == [header |-> [
-                        magic |-> 619259748,
-                        command |-> "ping",
-                        length |-> 0,
-                        checksum |-> 0
-                    ]]
-                    base == nodes[n].channels[m] 
-                IN
-                    /\ nodes' = [ nodes EXCEPT ![n].channels[m] = Append(base, ping) ]
+            /\ nodes' = [ nodes EXCEPT ![n].channels[m] = Append(@, MakePing) ]
             /\ UNCHANGED << clock >>
 
 PongMessage ==
@@ -100,20 +58,9 @@ PongMessage ==
         \E m \in OtherPeers[n]:
             /\ Len(nodes[n].channels[m]) > 0
             /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "ping"
-            /\ LET
-                    pong == [
-                        header |-> [
-                            magic |-> 619259748,
-                            command |-> "pong",
-                            length |-> 0,
-                            checksum |-> 0
-                        ]
-                    ]
-                    base == nodes[n].channels[m] 
-                IN
-                    /\ nodes' = [ nodes EXCEPT
-                            ![n].channels[m] = Append(base, pong),
-                            ![n].last_recv_at[m] = clock ]
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].channels[m]    = Append(@, MakePong),
+                    ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 InvMessage ==
@@ -123,24 +70,9 @@ InvMessage ==
             /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "verack"
             /\ nodes[n].channels[m][Len(nodes[n].channels[m]) - 1].header.command = "version"
             /\ nodes[n].blocks # {}
-            /\ LET
-                    inv == [
-                        header |-> [
-                            magic |-> 619259748,
-                            command |-> "inv",
-                            length |-> 0,
-                            checksum |-> 0
-                        ],
-                        payload |-> [
-                            count |-> 1,
-                            inventory |-> << [type |-> "MSG_BLOCK", hash |-> Cardinality(nodes[n].blocks)] >>
-                        ]
-                    ]
-                    base == nodes[n].channels[m] 
-                IN
-                    /\ nodes' = [ nodes EXCEPT
-                            ![n].channels[m] = Append(base, inv),
-                            ![n].last_recv_at[m] = clock ]
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].channels[m]    = Append(@, MakeInv(nodes[n].blocks)),
+                    ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 GetHeadersMessage ==
@@ -149,26 +81,9 @@ GetHeadersMessage ==
             /\ Len(nodes[n].channels[m]) >= 3
             /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "inv"
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
-            /\ LET
-                    getheaders == [
-                        header |-> [
-                            magic |-> 619259748,
-                            command |-> "getheaders",
-                            length |-> 0,
-                            checksum |-> 0
-                        ],
-                        payload |-> [
-                            version |-> 70015,
-                            hashCount |-> 1,
-                            blockLocatorHashes |-> << Cardinality(nodes[n].blocks) >>,
-                            hashStop |-> 0
-                        ]
-                    ]
-                    base == nodes[n].channels[m] 
-                IN
-                    /\ nodes' = [ nodes EXCEPT
-                            ![n].channels[m] = Append(base, getheaders),
-                            ![n].last_recv_at[m] = clock ]
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].channels[m]    = Append(@, MakeGetHeaders(nodes[n].blocks)),
+                    ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 HeadersMessage ==
@@ -177,24 +92,9 @@ HeadersMessage ==
             /\ Len(nodes[n].channels[m]) >= 4
             /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "getheaders"
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
-            /\ LET
-                    headers == [
-                        header |-> [
-                            magic |-> 619259748,
-                            command |-> "headers",
-                            length |-> 0,
-                            checksum |-> 0
-                        ],
-                        payload |-> [
-                            count |-> 1,
-                            headers |-> << [version |-> 70015, prev_block |-> Cardinality(nodes[n].blocks), merkle_root |-> 0, timestamp |-> clock, bits |-> 0, nonce |-> 0] >>
-                        ]
-                    ]
-                    base == nodes[n].channels[m] 
-                IN
-                    /\ nodes' = [ nodes EXCEPT
-                            ![n].channels[m] = Append(base, headers),
-                            ![n].last_recv_at[m] = clock ]
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].channels[m]    = Append(@, MakeHeaders(nodes[n].blocks, clock)),
+                    ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 GetDataMessage ==
@@ -204,24 +104,9 @@ GetDataMessage ==
             /\ \/ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "headers"
                \/ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "block"
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
-            /\ LET
-                    getdata == [
-                        header |-> [
-                            magic |-> 619259748,
-                            command |-> "getdata",
-                            length |-> 0,
-                            checksum |-> 0
-                        ],
-                        payload |-> [
-                            count |-> 1,
-                            inventory |-> << [type |-> "MSG_BLOCK", hash |-> Cardinality(nodes[n].blocks)] >>
-                        ]
-                    ]
-                    base == nodes[n].channels[m] 
-                IN
-                    /\ nodes' = [ nodes EXCEPT
-                            ![n].channels[m] = Append(base, getdata),
-                            ![n].last_recv_at[m] = clock ]
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].channels[m]    = Append(@, MakeGetData(nodes[n].blocks)),
+                    ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 BlockMessage ==
@@ -230,33 +115,13 @@ BlockMessage ==
             /\ Len(nodes[n].channels[m]) >= 6
             /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "getdata"
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
-            /\ LET
-                    block == [
-                        header |-> [
-                            magic |-> 619259748,
-                            command |-> "block",
-                            length |-> 0,
-                            checksum |-> 0
-                        ],
-                        payload |-> [
-                            version |-> 70015,
-                            prev_block |-> Cardinality(nodes[n].blocks),
-                            merkle_root |-> 0,
-                            timestamp |-> clock,
-                            bits |-> 0,
-                            nonce |-> 0,
-                            transactions |-> << >>
-                        ]
-                    ]
-                    base == nodes[n].channels[m] 
-                IN
-                    /\ nodes' = [ nodes EXCEPT
-                            ![n].channels[m] = Append(base, block),
-                            ![n].last_recv_at[m] = clock,
-                            ![n].blocks = nodes[n].blocks \cup {Cardinality(nodes[n].blocks) + 1} ]
-                    /\ IF \A i, j \in InitialPeers : nodes'[i].blocks = nodes'[j].blocks
-                        THEN PrintT(<<"ALL PEERS SYNCED", nodes'>>)
-                        ELSE TRUE
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].channels[m]    = Append(@, MakeBlock(nodes[n].blocks, clock)),
+                    ![n].last_recv_at[m] = clock,
+                    ![n].blocks          = nodes[n].blocks \cup {Cardinality(nodes[n].blocks) + 1} ]
+            /\ IF \A i, j \in InitialPeers : nodes'[i].blocks = nodes'[j].blocks
+                THEN PrintT(<<"ALL PEERS SYNCED", nodes'>>)
+                ELSE TRUE
             /\ UNCHANGED << clock >>
 
 Tick ==
