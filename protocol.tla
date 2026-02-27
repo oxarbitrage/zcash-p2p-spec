@@ -5,22 +5,17 @@ EXTENDS TLC, Naturals, Sequences, FiniteSets, messages
 
 CONSTANT InitialPeers
 CONSTANT MaxBlock
-CONSTANT MaxRounds
 
-VARIABLES nodes, round, done, clock
+VARIABLES nodes, clock
 
 ----
-vars == << nodes, round, done, clock >>
-
-ClockConstraint == clock <= 10
+vars == << nodes, clock >>
 
 \* For each initial peer construct a set of all other peers. 
 OtherPeers == [ n \in InitialPeers |-> InitialPeers \ { n } ]
 
 ----
 Init == 
-    /\ round = 0
-    /\ done = FALSE
     /\ clock = 0
     /\ \E blockset \in [ InitialPeers -> (1..MaxBlock) ] :
         nodes = [ i \in InitialPeers |-> [
@@ -42,7 +37,7 @@ VerackMsg ==
             /\ Len(nodes[n].channels[m]) >= 1
             /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "version"
             /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m]    = Append(@, MakeVerack),
+                    ![n].channels[m]     = Append(@, MakeVerack),
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
@@ -59,7 +54,7 @@ PongMessage ==
             /\ Len(nodes[n].channels[m]) > 0
             /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "ping"
             /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m]    = Append(@, MakePong),
+                    ![n].channels[m]     = Append(@, MakePong),
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
@@ -71,7 +66,7 @@ InvMessage ==
             /\ nodes[n].channels[m][Len(nodes[n].channels[m]) - 1].header.command = "version"
             /\ nodes[n].blocks # {}
             /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m]    = Append(@, MakeInv(nodes[n].blocks)),
+                    ![n].channels[m]     = Append(@, MakeInv(nodes[n].blocks)),
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
@@ -82,7 +77,7 @@ GetHeadersMessage ==
             /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "inv"
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
             /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m]    = Append(@, MakeGetHeaders(nodes[n].blocks)),
+                    ![n].channels[m]     = Append(@, MakeGetHeaders(nodes[n].blocks)),
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
@@ -93,7 +88,7 @@ HeadersMessage ==
             /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "getheaders"
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
             /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m]    = Append(@, MakeHeaders(nodes[n].blocks, clock)),
+                    ![n].channels[m]     = Append(@, MakeHeaders(nodes[n].blocks, clock)),
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
@@ -105,7 +100,7 @@ GetDataMessage ==
                \/ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "block"
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
             /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m]    = Append(@, MakeGetData(nodes[n].blocks)),
+                    ![n].channels[m]     = Append(@, MakeGetData(nodes[n].blocks)),
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
@@ -116,54 +111,34 @@ BlockMessage ==
             /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "getdata"
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
             /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m]    = Append(@, MakeBlock(nodes[n].blocks, clock)),
+                    ![n].channels[m]     = Append(@, MakeBlock(nodes[n].blocks, clock)),
                     ![n].last_recv_at[m] = clock,
                     ![n].blocks          = nodes[n].blocks \cup {Cardinality(nodes[n].blocks) + 1} ]
-            /\ IF \A i, j \in InitialPeers : nodes'[i].blocks = nodes'[j].blocks
-                THEN PrintT(<<"ALL PEERS SYNCED", nodes'>>)
-                ELSE TRUE
+            
             /\ UNCHANGED << clock >>
 
 Tick ==
-    /\ ~done
+    /\ clock < 10
     /\ clock' = clock + 1
-    /\ UNCHANGED << nodes, round, done >>
-
-DoRound ==
-    /\ ~done
-    /\ round < MaxRounds
-    /\ (\/ VersionMsg
-        \/ VerackMsg
-        \/ PingMessage
-        \/ PongMessage
-        \/ InvMessage
-        \/ GetHeadersMessage
-        \/ HeadersMessage
-        \/ GetDataMessage
-        \/ BlockMessage)
-    /\ round' = round + 1
-    /\ UNCHANGED << done, clock >>
-
-Done ==
-    /\ ~done
-    /\ round = MaxRounds
-    /\ done' = TRUE
-    /\ UNCHANGED << nodes, round, clock >>
-
-Stutter ==
-    /\ done
-    /\ UNCHANGED vars
+    /\ UNCHANGED << nodes >>
 
 Next ==
-    IF done THEN
-        Stutter
-    ELSE
-        \/ Tick
-        \/ DoRound
-        \/ Done
+    \/ Tick
+    \/ VersionMsg
+    \/ VerackMsg
+    \/ PingMessage
+    \/ PongMessage
+    \/ InvMessage
+    \/ GetHeadersMessage
+    \/ HeadersMessage
+    \/ GetDataMessage
+    \/ BlockMessage
 
 Spec == 
     Init 
     /\ [][Next]_vars
+    /\ WF_vars(Next)
+
+AllSynced == <> \A i, j \in InitialPeers : nodes[i].blocks = nodes[j].blocks
 
 ====
