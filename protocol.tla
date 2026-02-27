@@ -82,7 +82,7 @@ VerackMsg ==
 PingMessage == 
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
-            /\ last_recv_at[n][m] >= clock - 3
+            /\ last_recv_at[n][m] <= clock - 3
             /\ LET
                     ping == [header |-> [
                         magic |-> 619259748,
