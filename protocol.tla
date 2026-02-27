@@ -38,10 +38,10 @@ VersionMsg ==
                 LET
                     version == [
                         header |-> [
-                            magicBytes |-> 619259748,
+                            magic |-> 619259748,
                             command |-> "version",
-                            messageLength |-> 0,
-                            checkSum |-> 0
+                            length |-> 0,
+                            checksum |-> 0
                         ],
                         payload |-> [
                             version |-> 70015,
@@ -67,11 +67,11 @@ VerackMsg ==
             /\ LET
                     verack == [
                         header |-> [
-                            MagicBytes |-> 619259748,
-                            command |-> "verack",
-                            messageLength |-> 0,
-                            checkSum |-> 0
-                        ]
+                             magic |-> 619259748,
+                             command |-> "verack",
+                             length |-> 0,
+                             checksum |-> 0
+                         ]
                     ]
                     base == p2p_network[n][m] 
                 IN
@@ -85,10 +85,10 @@ PingMessage ==
             /\ last_recv_at[n][m] >= clock - 3
             /\ LET
                     ping == [header |-> [
-                        MagicBytes |-> 619259748,
+                        magic |-> 619259748,
                         command |-> "ping",
-                        messageLength |-> 0,
-                        checkSum |-> 0
+                        length |-> 0,
+                        checksum |-> 0
                     ]]
                     base == p2p_network[n][m] 
                 IN
@@ -103,11 +103,11 @@ PongMessage ==
             /\ LET
                     pong == [
                         header |-> [
-                            MagicBytes |-> 619259748,
-                            command |-> "pong",
-                            messageLength |-> 0,
-                            checkSum |-> 0
-                        ]
+                             magic |-> 619259748,
+                             command |-> "pong",
+                             length |-> 0,
+                             checksum |-> 0
+                         ]
                     ]
                     base == p2p_network[n][m] 
                 IN
@@ -125,11 +125,11 @@ InvMessage ==
             /\ LET
                     inv == [
                         header |-> [
-                            MagicBytes |-> 619259748,
-                            command |-> "inv",
-                            messageLength |-> 0,
-                            checkSum |-> 0
-                        ],
+                             magic |-> 619259748,
+                             command |-> "inv",
+                             length |-> 0,
+                             checksum |-> 0
+                         ],
                         payload |-> [
                             count |-> 1,
                             inventory |-> << [type |-> "MSG_BLOCK", hash |-> Cardinality(blockchains[n].blocks)] >>
@@ -150,11 +150,11 @@ GetHeadersMessage ==
             /\ LET
                     getheaders == [
                         header |-> [
-                            MagicBytes |-> 619259748,
-                            command |-> "getheaders",
-                            messageLength |-> 0,
-                            checkSum |-> 0
-                        ],
+                             magic |-> 619259748,
+                             command |-> "getheaders",
+                             length |-> 0,
+                             checksum |-> 0
+                         ],
                         payload |-> [
                             version |-> 70015,
                             hashCount |-> 1,
@@ -178,11 +178,11 @@ HeadersMessage ==
             /\ LET
                     headers == [
                         header |-> [
-                            MagicBytes |-> 619259748,
-                            command |-> "headers",
-                            messageLength |-> 0,
-                            checkSum |-> 0
-                        ],
+                             magic |-> 619259748,
+                             command |-> "headers",
+                             length |-> 0,
+                             checksum |-> 0
+                         ],
                         payload |-> [
                             count |-> 1,
                             headers |-> << [version |-> 70015, prev_block |-> Cardinality(blockchains[n].blocks), merkle_root |-> 0, timestamp |-> clock, bits |-> 0, nonce |-> 0] >>
@@ -204,11 +204,11 @@ GetDataMessage ==
             /\ LET
                     getdata == [
                         header |-> [
-                            MagicBytes |-> 619259748,
-                            command |-> "getdata",
-                            messageLength |-> 0,
-                            checkSum |-> 0
-                        ],
+                             magic |-> 619259748,
+                             command |-> "getdata",
+                             length |-> 0,
+                             checksum |-> 0
+                         ],
                         payload |-> [
                             count |-> 1,
                             inventory |-> << [type |-> "MSG_BLOCK", hash |-> Cardinality(blockchains[n].blocks)] >>
@@ -229,11 +229,11 @@ BlockMessage ==
             /\ LET
                     block == [
                         header |-> [
-                            MagicBytes |-> 619259748,
-                            command |-> "block",
-                            messageLength |-> 0,
-                            checkSum |-> 0
-                        ],
+                             magic |-> 619259748,
+                             command |-> "block",
+                             length |-> 0,
+                             checksum |-> 0
+                         ],
                         payload |-> [
                             version |-> 70015,
                             prev_block |-> Cardinality(blockchains[n].blocks),
