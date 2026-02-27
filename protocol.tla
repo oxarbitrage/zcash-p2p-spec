@@ -114,7 +114,6 @@ BlockMessage ==
                     ![n].channels[m]     = Append(@, MakeBlock(nodes[n].blocks, clock)),
                     ![n].last_recv_at[m] = clock,
                     ![n].blocks          = nodes[n].blocks \cup {Cardinality(nodes[n].blocks) + 1} ]
-            
             /\ UNCHANGED << clock >>
 
 Tick ==
