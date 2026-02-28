@@ -20,12 +20,14 @@ MakeVerack == [
     header |-> [ magic |-> 619259748, command |-> "verack" ]
 ]
 
-MakePing == [
-    header |-> [ magic |-> 619259748, command |-> "ping" ]
+MakePing(nonce) == [
+    header  |-> [ magic |-> 619259748, command |-> "ping" ],
+    payload |-> [ nonce |-> nonce ]
 ]
 
-MakePong == [
-    header |-> [ magic |-> 619259748, command |-> "pong" ]
+MakePong(nonce) == [
+    header  |-> [ magic |-> 619259748, command |-> "pong" ],
+    payload |-> [ nonce |-> nonce ]
 ]
 
 MakeInv(blocks) == [
@@ -50,7 +52,7 @@ MakeHeaders(blocks, timestamp) == [
     header  |-> [ magic |-> 619259748, command |-> "headers" ],
     payload |-> [
         count   |-> 1,
-        headers |-> << [ version |-> 70015, prev_block |-> Cardinality(blocks), merkle_root |-> 0, timestamp |-> timestamp, bits |-> 0, nonce |-> 0 ] >>
+        headers |-> << [ version |-> 170140, prev_block |-> Cardinality(blocks), merkle_root |-> 0, timestamp |-> timestamp, bits |-> 0, nonce |-> 0 ] >>
     ]
 ]
 

@@ -45,7 +45,7 @@ PingMessage ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
             /\ nodes[n].last_recv_at[m] <= clock - 3
-            /\ nodes' = [ nodes EXCEPT ![n].channels[m] = Append(@, MakePing) ]
+            /\ nodes' = [ nodes EXCEPT ![n].channels[m] = Append(@, MakePing(clock)) ]
             /\ UNCHANGED << clock >>
 
 PongMessage ==
@@ -53,9 +53,10 @@ PongMessage ==
         \E m \in OtherPeers[n]:
             /\ Len(nodes[n].channels[m]) > 0
             /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "ping"
-            /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m]     = Append(@, MakePong),
-                    ![n].last_recv_at[m] = clock ]
+            /\ LET ping == nodes[n].channels[m][Len(nodes[n].channels[m])] IN
+                /\ nodes' = [ nodes EXCEPT
+                        ![n].channels[m]     = Append(@, MakePong(ping.payload.nonce)),
+                        ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 InvMessage ==
