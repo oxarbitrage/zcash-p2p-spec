@@ -2,7 +2,7 @@
 EXTENDS Naturals, FiniteSets
 
 MakeVersion(from, to, timestamp, blocks) == [
-    header  |-> [ magic |-> 619259748, command |-> "version", length |-> 0, checksum |-> 0 ],
+    header  |-> [ magic |-> 619259748, command |-> "version" ],
     payload |-> [
         version      |-> 70015,
         services     |-> 0,
@@ -17,19 +17,19 @@ MakeVersion(from, to, timestamp, blocks) == [
 ]
 
 MakeVerack == [
-    header |-> [ magic |-> 619259748, command |-> "verack", length |-> 0, checksum |-> 0 ]
+    header |-> [ magic |-> 619259748, command |-> "verack" ]
 ]
 
 MakePing == [
-    header |-> [ magic |-> 619259748, command |-> "ping", length |-> 0, checksum |-> 0 ]
+    header |-> [ magic |-> 619259748, command |-> "ping" ]
 ]
 
 MakePong == [
-    header |-> [ magic |-> 619259748, command |-> "pong", length |-> 0, checksum |-> 0 ]
+    header |-> [ magic |-> 619259748, command |-> "pong" ]
 ]
 
 MakeInv(blocks) == [
-    header  |-> [ magic |-> 619259748, command |-> "inv", length |-> 0, checksum |-> 0 ],
+    header  |-> [ magic |-> 619259748, command |-> "inv" ],
     payload |-> [
         count     |-> 1,
         inventory |-> << [ type |-> "MSG_BLOCK", hash |-> Cardinality(blocks) ] >>
@@ -37,7 +37,7 @@ MakeInv(blocks) == [
 ]
 
 MakeGetHeaders(blocks) == [
-    header  |-> [ magic |-> 619259748, command |-> "getheaders", length |-> 0, checksum |-> 0 ],
+    header  |-> [ magic |-> 619259748, command |-> "getheaders" ],
     payload |-> [
         version            |-> 70015,
         hashCount          |-> 1,
@@ -47,7 +47,7 @@ MakeGetHeaders(blocks) == [
 ]
 
 MakeHeaders(blocks, timestamp) == [
-    header  |-> [ magic |-> 619259748, command |-> "headers", length |-> 0, checksum |-> 0 ],
+    header  |-> [ magic |-> 619259748, command |-> "headers" ],
     payload |-> [
         count   |-> 1,
         headers |-> << [ version |-> 70015, prev_block |-> Cardinality(blocks), merkle_root |-> 0, timestamp |-> timestamp, bits |-> 0, nonce |-> 0 ] >>
@@ -55,7 +55,7 @@ MakeHeaders(blocks, timestamp) == [
 ]
 
 MakeGetData(blocks) == [
-    header  |-> [ magic |-> 619259748, command |-> "getdata", length |-> 0, checksum |-> 0 ],
+    header  |-> [ magic |-> 619259748, command |-> "getdata" ],
     payload |-> [
         count     |-> 1,
         inventory |-> << [ type |-> "MSG_BLOCK", hash |-> Cardinality(blocks) ] >>
@@ -63,7 +63,7 @@ MakeGetData(blocks) == [
 ]
 
 MakeBlock(blocks, timestamp) == [
-    header  |-> [ magic |-> 619259748, command |-> "block", length |-> 0, checksum |-> 0 ],
+    header  |-> [ magic |-> 619259748, command |-> "block" ],
     payload |-> [
         version      |-> 70015,
         prev_block   |-> Cardinality(blocks),
