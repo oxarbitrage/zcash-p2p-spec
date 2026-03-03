@@ -20,6 +20,8 @@ Init ==
     /\ \E blockset \in [ InitialPeers -> (1..MaxBlock) ] :
         nodes = [ i \in InitialPeers |-> [
             channels     |-> [ j \in OtherPeers[i] |-> <<>> ],
+            conn         |-> [ j \in OtherPeers[i] |-> "init" ],
+            ping_nonce   |-> [ j \in OtherPeers[i] |-> 0 ],
             last_recv_at |-> [ j \in OtherPeers[i] |-> 0 ],
             blocks       |-> 1..blockset[i]
         ]]
@@ -27,94 +29,103 @@ Init ==
 VersionMsg ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
-            /\ Len(nodes[n].channels[m]) = 0
-            /\ nodes' = [ nodes EXCEPT ![n].channels[m] = Append(@, MakeVersion(n, m, clock, nodes[n].blocks)) ]
+            /\ nodes[n].conn[m] = "init"
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].channels[m] = Append(@, MakeVersion(n, m, clock, nodes[n].blocks)),
+                    ![n].conn[m]     = "version_sent" ]
             /\ UNCHANGED << clock >>
 
 VerackMsg ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
-            /\ Len(nodes[n].channels[m]) >= 1
-            /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "version"
+            /\ nodes[n].conn[m] = "version_sent"
             /\ nodes' = [ nodes EXCEPT
                     ![n].channels[m]     = Append(@, MakeVerack),
+                    ![n].conn[m]         = "established",
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 PingMessage == 
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
+            /\ nodes[n].conn[m] \notin {"init", "version_sent"}
             /\ nodes[n].last_recv_at[m] <= clock - 3
-            /\ nodes' = [ nodes EXCEPT ![n].channels[m] = Append(@, MakePing(clock)) ]
+            /\ nodes[n].ping_nonce[m] = 0
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].channels[m]   = Append(@, MakePing(clock)),
+                    ![n].ping_nonce[m] = clock ]
             /\ UNCHANGED << clock >>
 
 PongMessage ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
-            /\ Len(nodes[n].channels[m]) > 0
-            /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "ping"
-            /\ LET ping == nodes[n].channels[m][Len(nodes[n].channels[m])] IN
-                /\ nodes' = [ nodes EXCEPT
-                        ![n].channels[m]     = Append(@, MakePong(ping.payload.nonce)),
-                        ![n].last_recv_at[m] = clock ]
+            /\ nodes[n].ping_nonce[m] # 0
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].channels[m]     = Append(@, MakePong(nodes[n].ping_nonce[m])),
+                    ![n].ping_nonce[m]   = 0,
+                    ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 InvMessage ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
-            /\ Len(nodes[n].channels[m]) >= 2
-            /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "verack"
-            /\ nodes[n].channels[m][Len(nodes[n].channels[m]) - 1].header.command = "version"
+            /\ nodes[n].conn[m] = "established"
             /\ nodes[n].blocks # {}
             /\ nodes' = [ nodes EXCEPT
                     ![n].channels[m]     = Append(@, MakeInv(nodes[n].blocks)),
+                    ![n].conn[m]         = "inv_sent",
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 GetHeadersMessage ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
-            /\ Len(nodes[n].channels[m]) >= 3
-            /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "inv"
+            /\ nodes[n].conn[m] = "inv_sent"
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
             /\ nodes' = [ nodes EXCEPT
                     ![n].channels[m]     = Append(@, MakeGetHeaders(nodes[n].blocks)),
+                    ![n].conn[m]         = "getheaders_sent",
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 HeadersMessage ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
-            /\ Len(nodes[n].channels[m]) >= 4
-            /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "getheaders"
+            /\ nodes[n].conn[m] = "getheaders_sent"
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
             /\ nodes' = [ nodes EXCEPT
                     ![n].channels[m]     = Append(@, MakeHeaders(nodes[n].blocks, clock)),
+                    ![n].conn[m]         = "headers_sent",
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 GetDataMessage ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
-            /\ Len(nodes[n].channels[m]) >= 5
-            /\ \/ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "headers"
-               \/ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "block"
+            /\ nodes[n].conn[m] \in {"headers_sent", "block_received"}
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
             /\ nodes' = [ nodes EXCEPT
                     ![n].channels[m]     = Append(@, MakeGetData(nodes[n].blocks)),
+                    ![n].conn[m]         = "getdata_sent",
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 BlockMessage ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
-            /\ Len(nodes[n].channels[m]) >= 6
-            /\ nodes[n].channels[m][Len(nodes[n].channels[m])].header.command = "getdata"
+            /\ nodes[n].conn[m] = "getdata_sent"
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
-            /\ nodes' = [ nodes EXCEPT
+            /\ LET newBlocks == nodes[n].blocks \cup {Cardinality(nodes[n].blocks) + 1}
+               IN nodes' = [ nodes EXCEPT
                     ![n].channels[m]     = Append(@, MakeBlock(nodes[n].blocks, clock)),
                     ![n].last_recv_at[m] = clock,
-                    ![n].blocks          = nodes[n].blocks \cup {Cardinality(nodes[n].blocks) + 1} ]
+                    ![n].blocks          = newBlocks,
+                    ![n].conn[m]         = IF Cardinality(newBlocks) < Cardinality(nodes[m].blocks)
+                                           THEN "block_received"
+                                           ELSE "synced" ]
+            /\ IF \A i, j \in InitialPeers : nodes'[i].blocks = nodes'[j].blocks
+                THEN PrintT(<<"ALL PEERS SYNCED at clock", clock>>)
+                ELSE TRUE
             /\ UNCHANGED << clock >>
 
 Tick ==
