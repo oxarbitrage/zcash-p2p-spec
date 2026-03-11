@@ -9,7 +9,8 @@ on:
       - main
 
 jobs:
-  model_check:
+  model_check_2peers:
+    name: 2 peers (complete verification)
     runs-on: ubuntu-latest
 
     steps:
@@ -25,6 +26,27 @@ jobs:
     - name: Download TLC tools
       run: wget https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
 
-    - name: Run TLC model checker
+    - name: Run TLC model checker (2 peers)
       run: |
         timeout 120 java -jar tla2tools.jar -config protocol.cfg protocol.tla || true
+
+  model_check_3peers:
+    name: 3 peers with symmetry (bounded verification)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    - name: Download TLC tools
+      run: wget https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
+
+    - name: Run TLC model checker (3 peers, symmetry)
+      run: |
+        timeout 120 java -jar tla2tools.jar -config protocol_3peers.cfg protocol.tla || true

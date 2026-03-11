@@ -5,13 +5,17 @@ EXTENDS TLC, Naturals, Sequences, FiniteSets, messages
 
 CONSTANT InitialPeers
 CONSTANT MaxBlock
+CONSTANT MaxClock
 
 VARIABLES nodes, clock
 
 ----
 vars == << nodes, clock >>
 
-\* For each initial peer construct a set of all other peers. 
+\* See README for an explanation of symmetry reduction.
+Symmetry == Permutations(InitialPeers)
+
+\* For each initial peer construct a set of all other peers.
 OtherPeers == [ n \in InitialPeers |-> InitialPeers \ { n } ]
 
 ----
@@ -81,11 +85,13 @@ GetHeadersMessage ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
             /\ nodes[n].conn[m] = "inv_sent"
-            /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
-            /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m]     = Append(@, MakeGetHeaders(nodes[n].blocks)),
-                    ![n].conn[m]         = "getheaders_sent",
-                    ![n].last_recv_at[m] = clock ]
+            /\ \/ /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
+                  /\ nodes' = [ nodes EXCEPT
+                          ![n].channels[m]     = Append(@, MakeGetHeaders(nodes[n].blocks)),
+                          ![n].conn[m]         = "getheaders_sent",
+                          ![n].last_recv_at[m] = clock ]
+               \/ /\ Cardinality(nodes[n].blocks) >= Cardinality(nodes[m].blocks)
+                  /\ nodes' = [ nodes EXCEPT ![n].conn[m] = "synced" ]
             /\ UNCHANGED << clock >>
 
 HeadersMessage ==
@@ -129,7 +135,7 @@ BlockMessage ==
             /\ UNCHANGED << clock >>
 
 Tick ==
-    /\ clock < 10
+    /\ clock < MaxClock
     /\ clock' = clock + 1
     /\ UNCHANGED << nodes >>
 
