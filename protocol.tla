@@ -43,6 +43,7 @@ VerackMsg ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
             /\ nodes[n].conn[m] = "version_sent"
+            /\ nodes[m].conn[n] \notin {"init"}  \* m has sent its version
             /\ nodes' = [ nodes EXCEPT
                     ![n].channels[m]     = Append(@, MakeVerack),
                     ![n].conn[m]         = "established",
