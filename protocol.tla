@@ -51,7 +51,21 @@ VerackMsg ==
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
-PingMessage == 
+\* Models version validation failure: version too old or self-connection nonce match.
+\* Non-deterministic: TLC explores both the accept (VerackMsg) and reject paths,
+\* verifying that AllSynced holds even when handshakes fail and peers must retry.
+RejectMsg ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            /\ nodes[n].conn[m] = "version_sent"
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].channels[m]     = Append(@, MakeReject("version")),
+                    ![n].conn[m]         = "init",
+                    ![n].ping_nonce[m]   = 0,
+                    ![n].last_recv_at[m] = clock ]
+            /\ UNCHANGED << clock >>
+
+PingMessage ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
             /\ nodes[n].conn[m] \notin {"init", "version_sent"}
@@ -165,11 +179,13 @@ Next ==
     \/ GetDataMessage
     \/ BlockMessage
     \/ Disconnect
+    \/ RejectMsg
 
-Spec == 
-    Init 
+Spec ==
+    Init
     /\ [][Next]_vars
     /\ WF_vars(Next)
+    /\ SF_vars(VerackMsg)
 
 AllSynced == <> \A i, j \in InitialPeers : nodes[i].blocks = nodes[j].blocks
 

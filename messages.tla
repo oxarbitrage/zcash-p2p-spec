@@ -64,6 +64,11 @@ MakeGetData(blocks) == [
     ]
 ]
 
+MakeReject(rejected_command) == [
+    header  |-> [ magic |-> 619259748, command |-> "reject" ],
+    payload |-> [ message |-> rejected_command ]
+]
+
 MakeBlock(blocks, timestamp) == [
     header  |-> [ magic |-> 619259748, command |-> "block" ],
     payload |-> [
