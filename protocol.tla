@@ -6,6 +6,7 @@ EXTENDS TLC, Naturals, Sequences, FiniteSets, messages
 CONSTANT InitialPeers
 CONSTANT MaxBlock
 CONSTANT MaxClock
+CONSTANT DisconnectTimeout
 
 VARIABLES nodes, clock
 
@@ -135,6 +136,18 @@ BlockMessage ==
                 ELSE TRUE
             /\ UNCHANGED << clock >>
 
+Disconnect ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            /\ nodes[n].conn[m] \notin {"init"}
+            /\ clock - nodes[n].last_recv_at[m] > DisconnectTimeout
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].channels[m]     = <<>>,
+                    ![n].conn[m]         = "init",
+                    ![n].ping_nonce[m]   = 0,
+                    ![n].last_recv_at[m] = clock ]
+            /\ UNCHANGED << clock >>
+
 Tick ==
     /\ clock < MaxClock
     /\ clock' = clock + 1
@@ -151,6 +164,7 @@ Next ==
     \/ HeadersMessage
     \/ GetDataMessage
     \/ BlockMessage
+    \/ Disconnect
 
 Spec == 
     Init 
