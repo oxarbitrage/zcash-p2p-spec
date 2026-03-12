@@ -28,7 +28,7 @@ jobs:
 
     - name: Run TLC model checker (2 peers)
       run: |
-        timeout 120 java -jar tla2tools.jar -config protocol.cfg protocol.tla || true
+        timeout 300 java -jar tla2tools.jar -config protocol.cfg protocol.tla
 
   model_check_3peers:
     name: 3 peers with symmetry (bounded verification)

@@ -1,12 +1,14 @@
 ---- MODULE messages ----
 EXTENDS Naturals, FiniteSets
 
-MakeVersion(from, to, timestamp, blocks) == [
+\* Timestamps are omitted from message constructors: no action or invariant reads them,
+\* and including clock-varying values would unnecessarily inflate the TLC state space.
+
+MakeVersion(from, to, blocks) == [
     header  |-> [ magic |-> 619259748, command |-> "version" ],
     payload |-> [
-        version      |-> 70015,
+        version      |-> 170100,
         services     |-> 0,
-        timestamp    |-> timestamp,
         addr_recv    |-> to,
         addr_from    |-> from,
         nonce        |-> 0,
@@ -20,14 +22,14 @@ MakeVerack == [
     header |-> [ magic |-> 619259748, command |-> "verack" ]
 ]
 
-MakePing(nonce) == [
+MakePing == [
     header  |-> [ magic |-> 619259748, command |-> "ping" ],
-    payload |-> [ nonce |-> nonce ]
+    payload |-> [ nonce |-> 0 ]
 ]
 
-MakePong(nonce) == [
+MakePong == [
     header  |-> [ magic |-> 619259748, command |-> "pong" ],
-    payload |-> [ nonce |-> nonce ]
+    payload |-> [ nonce |-> 0 ]
 ]
 
 MakeInv(blocks) == [
@@ -41,18 +43,18 @@ MakeInv(blocks) == [
 MakeGetHeaders(blocks) == [
     header  |-> [ magic |-> 619259748, command |-> "getheaders" ],
     payload |-> [
-        version            |-> 70015,
+        version            |-> 170100,
         hashCount          |-> 1,
         blockLocatorHashes |-> << Cardinality(blocks) >>,
         hashStop           |-> 0
     ]
 ]
 
-MakeHeaders(blocks, timestamp) == [
+MakeHeaders(blocks) == [
     header  |-> [ magic |-> 619259748, command |-> "headers" ],
     payload |-> [
         count   |-> 1,
-        headers |-> << [ version |-> 170140, prev_block |-> Cardinality(blocks), merkle_root |-> 0, timestamp |-> timestamp, bits |-> 0, nonce |-> 0 ] >>
+        headers |-> << [ version |-> 170140, prev_block |-> Cardinality(blocks), merkle_root |-> 0, bits |-> 0, nonce |-> 0 ] >>
     ]
 ]
 
@@ -69,13 +71,12 @@ MakeReject(rejected_command) == [
     payload |-> [ message |-> rejected_command ]
 ]
 
-MakeBlock(blocks, timestamp) == [
+MakeBlock(blocks) == [
     header  |-> [ magic |-> 619259748, command |-> "block" ],
     payload |-> [
         version      |-> 70015,
         prev_block   |-> Cardinality(blocks),
         merkle_root  |-> 0,
-        timestamp    |-> timestamp,
         bits         |-> 0,
         nonce        |-> 0,
         transactions |-> << >>

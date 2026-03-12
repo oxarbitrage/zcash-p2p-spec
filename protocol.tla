@@ -7,6 +7,7 @@ CONSTANT InitialPeers
 CONSTANT MaxBlock
 CONSTANT MaxClock
 CONSTANT DisconnectTimeout
+CONSTANT MinPeerProtoVersion
 
 VARIABLES nodes, clock
 
@@ -36,7 +37,7 @@ VersionMsg ==
         \E m \in OtherPeers[n]:
             /\ nodes[n].conn[m] = "init"
             /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m] = Append(@, MakeVersion(n, m, clock, nodes[n].blocks)),
+                    ![n].channels[m] = Append(@, MakeVersion(n, m, nodes[n].blocks)),
                     ![n].conn[m]     = "version_sent" ]
             /\ UNCHANGED << clock >>
 
@@ -58,8 +59,9 @@ RejectMsg ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
             /\ nodes[n].conn[m] = "version_sent"
+            /\ nodes[m].conn[n] \notin {"init"}  \* m has sent its version (version validation is bilateral)
             /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m]     = Append(@, MakeReject("version")),
+                    ![n].channels[m]     = << MakeReject("version") >>,
                     ![n].conn[m]         = "init",
                     ![n].ping_nonce[m]   = 0,
                     ![n].last_recv_at[m] = clock ]
@@ -72,7 +74,7 @@ PingMessage ==
             /\ nodes[n].last_recv_at[m] <= clock - 3
             /\ nodes[n].ping_nonce[m] = 0
             /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m]   = Append(@, MakePing(clock)),
+                    ![n].channels[m]   = Append(@, MakePing),
                     ![n].ping_nonce[m] = clock ]
             /\ UNCHANGED << clock >>
 
@@ -81,7 +83,7 @@ PongMessage ==
         \E m \in OtherPeers[n]:
             /\ nodes[n].ping_nonce[m] # 0
             /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m]     = Append(@, MakePong(nodes[n].ping_nonce[m])),
+                    ![n].channels[m]     = Append(@, MakePong),
                     ![n].ping_nonce[m]   = 0,
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
@@ -116,7 +118,7 @@ HeadersMessage ==
             /\ nodes[n].conn[m] = "getheaders_sent"
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
             /\ nodes' = [ nodes EXCEPT
-                    ![n].channels[m]     = Append(@, MakeHeaders(nodes[n].blocks, clock)),
+                    ![n].channels[m]     = Append(@, MakeHeaders(nodes[n].blocks)),
                     ![n].conn[m]         = "headers_sent",
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
@@ -139,7 +141,7 @@ BlockMessage ==
             /\ Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
             /\ LET newBlocks == nodes[n].blocks \cup {Cardinality(nodes[n].blocks) + 1}
                IN nodes' = [ nodes EXCEPT
-                    ![n].channels[m]     = Append(@, MakeBlock(nodes[n].blocks, clock)),
+                    ![n].channels[m]     = Append(@, MakeBlock(nodes[n].blocks)),
                     ![n].last_recv_at[m] = clock,
                     ![n].blocks          = newBlocks,
                     ![n].conn[m]         = IF Cardinality(newBlocks) < Cardinality(nodes[m].blocks)
@@ -188,5 +190,53 @@ Spec ==
     /\ SF_vars(VerackMsg)
 
 AllSynced == <> \A i, j \in InitialPeers : nodes[i].blocks = nodes[j].blocks
+
+----
+\* ZIP-0204 invariants: safety properties checked at every reachable state.
+
+\* inv and getdata inventory vectors must not exceed 50,000 entries (ZIP-0204 §4).
+InvCountBounded ==
+    \A n \in InitialPeers:
+        \A m \in OtherPeers[n]:
+            \A i \in 1..Len(nodes[n].channels[m]):
+                nodes[n].channels[m][i].header.command = "inv"
+                => nodes[n].channels[m][i].payload.count <= 50000
+
+GetDataCountBounded ==
+    \A n \in InitialPeers:
+        \A m \in OtherPeers[n]:
+            \A i \in 1..Len(nodes[n].channels[m]):
+                nodes[n].channels[m][i].header.command = "getdata"
+                => nodes[n].channels[m][i].payload.count <= 50000
+
+\* headers messages must not carry more than 160 block headers (ZIP-0204 §4).
+HeadersCountBounded ==
+    \A n \in InitialPeers:
+        \A m \in OtherPeers[n]:
+            \A i \in 1..Len(nodes[n].channels[m]):
+                nodes[n].channels[m][i].header.command = "headers"
+                => nodes[n].channels[m][i].payload.count <= 160
+
+\* Peers must speak at least MinPeerProtoVersion (ZIP-0204 §3).
+VersionBounded ==
+    \A n \in InitialPeers:
+        \A m \in OtherPeers[n]:
+            \A i \in 1..Len(nodes[n].channels[m]):
+                nodes[n].channels[m][i].header.command = "version"
+                => nodes[n].channels[m][i].payload.version >= MinPeerProtoVersion
+
+\* A non-zero ping nonce implies the connection is past the handshake.
+PingOnEstablished ==
+    \A n \in InitialPeers:
+        \A m \in OtherPeers[n]:
+            nodes[n].ping_nonce[m] # 0
+            => nodes[n].conn[m] \notin {"init", "version_sent"}
+
+\* A peer only enters sync states when it actually has fewer blocks than its partner.
+SyncDirection ==
+    \A n \in InitialPeers:
+        \A m \in OtherPeers[n]:
+            nodes[n].conn[m] \in {"getheaders_sent", "headers_sent", "getdata_sent", "block_received"}
+            => Cardinality(nodes[n].blocks) < Cardinality(nodes[m].blocks)
 
 ====
