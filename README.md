@@ -17,8 +17,37 @@ The spec covers the connection lifecycle between peers:
 3. **Block sync** — `inv` → `getheaders` → `headers` → `getdata` → `block`, looping until the lagging peer catches up.
 4. **Disconnection** — peers disconnect if no message is received within `DisconnectTimeout` ticks, then restart the handshake.
 
-Each connection is modeled as an explicit state machine with states:
-`init` → `version_sent` → `established` → `inv_sent` → `getheaders_sent` → `headers_sent` → `getdata_sent` ⇄ `block_received` → `synced`
+Each connection is modeled as an explicit state machine:
+
+```mermaid
+stateDiagram-v2
+    [*] --> init
+
+    init --> version_sent : VersionMsg
+    version_sent --> established : VerackMsg\n(both sides sent version)
+    version_sent --> init : RejectMsg\n(version invalid)
+    established --> inv_sent : InvMessage
+
+    inv_sent --> getheaders_sent : GetHeadersMessage\n(lagging)
+    inv_sent --> synced : GetHeadersMessage\n(already caught up)
+
+    getheaders_sent --> headers_sent : HeadersMessage
+    headers_sent --> getdata_sent : GetDataMessage
+    block_received --> getdata_sent : GetDataMessage
+    getdata_sent --> block_received : BlockMessage\n(still behind)
+    getdata_sent --> synced : BlockMessage\n(caught up)
+
+    version_sent --> init : Disconnect
+    established --> init : Disconnect
+    inv_sent --> init : Disconnect
+    getheaders_sent --> init : Disconnect
+    headers_sent --> init : Disconnect
+    getdata_sent --> init : Disconnect
+    block_received --> init : Disconnect
+    synced --> init : Disconnect
+```
+
+Ping/pong can fire from any post-handshake state (`established` through `synced`) when the connection has been idle.
 
 The spec checks:
 - **Liveness** — `AllSynced`: eventually all peers reach the same block height.
