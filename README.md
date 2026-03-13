@@ -4,20 +4,20 @@ A TLA+ formal specification of the Zcash peer-to-peer network protocol, followin
 
 ## Structure
 
-- [`messages.tla`](messages.tla) — Message constructors for all protocol messages (`version`, `verack`, `ping`, `pong`, `inv`, `getheaders`, `headers`, `getdata`, `block`).
+- [`messages.tla`](messages.tla) — Message constructors for all protocol messages (`version`, `verack`, `ping`, `pong`, `inv`, `getheaders`, `headers`, `getdata`, `block`, `reject`).
 - [`protocol.tla`](protocol.tla) — Protocol actions, connection state machine, and liveness property.
 - [`protocol.cfg`](protocol.cfg) — TLC model checker configuration.
 
 ## What is modeled
 
-The spec covers the connection lifecycle between peers:
+The spec covers the connection lifecycle between peers using a **message consumption model**: each peer has an inbox (FIFO queue) per connection. Sends append to the remote peer's inbox; receives dequeue from the local inbox. No action peeks at remote node state — all decisions are based on message payloads.
 
-1. **Handshake** — `version` / `verack` exchange, with non-deterministic rejection (`reject`) to model version validation failures and self-connection detection.
+1. **Handshake** — `version` / `verack` exchange. Version validation is deterministic: peers whose advertised version is below `MinPeerProtoVersion` are rejected.
 2. **Keepalive** — `ping` / `pong` with nonce echo, triggered when a connection is idle.
-3. **Block sync** — `inv` → `getheaders` → `headers` → `getdata` → `block`, looping until the lagging peer catches up.
-4. **Disconnection** — peers disconnect if no message is received within `DisconnectTimeout` ticks, then restart the handshake.
+3. **Block sync** — `inv` → `getheaders` → `headers` → `getdata` → `block`, looping until the lagging peer catches up. Both peers exchange invs before either processes the other's.
+4. **Disconnection** — bilateral (TCP RST): if no message is received within `DisconnectTimeout` ticks, both sides reset to `init`.
 
-Each connection is modeled as an explicit state machine from the perspective of peer **n** tracking its relationship with peer **m**. Any non-`init` state transitions back to `init` on a `Disconnect` (idle timeout), and `ping`/`pong` can fire from any post-handshake state when the connection is idle.
+Each connection is modeled as an explicit state machine from the perspective of peer **n** tracking its relationship with peer **m**. Ping/pong can fire from any post-handshake state when the connection is idle.
 
 ```mermaid
 stateDiagram-v2
@@ -25,26 +25,25 @@ stateDiagram-v2
 
     [*] --> init
 
-    init --> version_sent : version
+    init --> version_sent : SendVersion
 
     state "Handshake" as hs {
-        version_sent --> established : verack
-        version_sent --> init : reject
+        version_sent --> established : RecvVersion (valid)
+        version_sent --> init : RecvVersion (invalid)
     }
 
     state "Block sync (n lags m)" as sync {
-        established --> inv_sent : inv
-        inv_sent --> synced : already caught up
-        inv_sent --> getheaders_sent : getheaders
-        getheaders_sent --> headers_sent : headers
-        headers_sent --> getdata_sent : getdata
-        getdata_sent --> block_received : block (still behind)
-        block_received --> getdata_sent : getdata
-        getdata_sent --> synced : block (caught up)
+        established --> inv_sent : SendInv
+        inv_sent --> synced : RecvInv (already caught up)
+        inv_sent --> getheaders_sent : RecvInv (lagging)
+        getheaders_sent --> getdata_sent : RecvHeaders
+        getdata_sent --> block_received : RecvBlock (still behind)
+        block_received --> getdata_sent : SendGetData
+        getdata_sent --> synced : RecvBlock (caught up)
     }
 ```
 
-The block sync states are only entered when n has fewer blocks than m. Once n catches up (`synced`), the session for that direction is complete — m independently goes through the same states from its own perspective if it also lags n.
+The block sync states are only entered when n has fewer blocks than m (determined from the inv payload). Once n catches up (`synced`), the session for that direction is complete — m independently goes through the same states from its own perspective if it also lags n.
 
 The spec checks:
 - **Liveness** — `AllSynced`: eventually all peers reach the same block height.
@@ -53,7 +52,7 @@ The spec checks:
   - `HeadersCountBounded` — headers messages carry ≤ 160 headers.
   - `VersionBounded` — peers advertise a version ≥ `MinPeerProtoVersion` (170002).
   - `PingOnEstablished` — ping nonces are only active after the handshake completes.
-  - `SyncDirection` — a peer only enters sync states when it actually has fewer blocks than its partner.
+  - `SyncDirection` — a peer only enters sync states when it has ≤ blocks than its partner.
 
 ## Running the model checker
 
@@ -67,7 +66,7 @@ Two configurations are provided:
 | [`protocol_3peers.cfg`](protocol_3peers.cfg) | 3 | Yes | Bounded — runs until timeout, no errors found |
 
 ```bash
-# Complete liveness proof (2 peers, finishes in ~3 minutes)
+# Complete liveness proof (2 peers, finishes in ~10 seconds)
 java -jar tla2tools.jar -config protocol.cfg protocol.tla
 
 # Bounded stress test (3 peers, run until timeout)
@@ -102,4 +101,3 @@ PDFs are automatically regenerated by CI on every push to `main` that modifies `
 | `MaxClock` | `5` | Upper bound on the clock (limits ping/pong interleaving). |
 | `DisconnectTimeout` | `4` | Ticks of silence before a peer disconnects. |
 | `MinPeerProtoVersion` | `170002` | Minimum acceptable protocol version (ZIP-0204 §3). |
-
