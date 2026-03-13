@@ -147,9 +147,6 @@ BlockMessage ==
                     ![n].conn[m]         = IF Cardinality(newBlocks) < Cardinality(nodes[m].blocks)
                                            THEN "block_received"
                                            ELSE "synced" ]
-            /\ IF \A i, j \in InitialPeers : nodes'[i].blocks = nodes'[j].blocks
-                THEN PrintT(<<"ALL PEERS SYNCED at clock", clock>>)
-                ELSE TRUE
             /\ UNCHANGED << clock >>
 
 Disconnect ==

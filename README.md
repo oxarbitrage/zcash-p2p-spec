@@ -17,37 +17,34 @@ The spec covers the connection lifecycle between peers:
 3. **Block sync** — `inv` → `getheaders` → `headers` → `getdata` → `block`, looping until the lagging peer catches up.
 4. **Disconnection** — peers disconnect if no message is received within `DisconnectTimeout` ticks, then restart the handshake.
 
-Each connection is modeled as an explicit state machine:
+Each connection is modeled as an explicit state machine from the perspective of peer **n** tracking its relationship with peer **m**. Any non-`init` state transitions back to `init` on a `Disconnect` (idle timeout), and `ping`/`pong` can fire from any post-handshake state when the connection is idle.
 
 ```mermaid
 stateDiagram-v2
+    direction LR
+
     [*] --> init
 
-    init --> version_sent : VersionMsg
-    version_sent --> established : VerackMsg\n(both sides sent version)
-    version_sent --> init : RejectMsg\n(version invalid)
-    established --> inv_sent : InvMessage
+    init --> version_sent : version
 
-    inv_sent --> getheaders_sent : GetHeadersMessage\n(lagging)
-    inv_sent --> synced : GetHeadersMessage\n(already caught up)
+    state "Handshake" as hs {
+        version_sent --> established : verack
+        version_sent --> init : reject
+    }
 
-    getheaders_sent --> headers_sent : HeadersMessage
-    headers_sent --> getdata_sent : GetDataMessage
-    block_received --> getdata_sent : GetDataMessage
-    getdata_sent --> block_received : BlockMessage\n(still behind)
-    getdata_sent --> synced : BlockMessage\n(caught up)
-
-    version_sent --> init : Disconnect
-    established --> init : Disconnect
-    inv_sent --> init : Disconnect
-    getheaders_sent --> init : Disconnect
-    headers_sent --> init : Disconnect
-    getdata_sent --> init : Disconnect
-    block_received --> init : Disconnect
-    synced --> init : Disconnect
+    state "Block sync (n lags m)" as sync {
+        established --> inv_sent : inv
+        inv_sent --> synced : already caught up
+        inv_sent --> getheaders_sent : getheaders
+        getheaders_sent --> headers_sent : headers
+        headers_sent --> getdata_sent : getdata
+        getdata_sent --> block_received : block (still behind)
+        block_received --> getdata_sent : getdata
+        getdata_sent --> synced : block (caught up)
+    }
 ```
 
-Ping/pong can fire from any post-handshake state (`established` through `synced`) when the connection has been idle.
+The block sync states are only entered when n has fewer blocks than m. Once n catches up (`synced`), the session for that direction is complete — m independently goes through the same states from its own perspective if it also lags n.
 
 The spec checks:
 - **Liveness** — `AllSynced`: eventually all peers reach the same block height.
