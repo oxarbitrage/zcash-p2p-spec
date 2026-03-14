@@ -10,7 +10,9 @@ A TLA+ formal specification of the Zcash peer-to-peer network protocol, followin
 
 ## What is modeled
 
-The spec covers the connection lifecycle between peers using a **message consumption model**: each peer has an inbox (FIFO queue) per connection. Sends append to the remote peer's inbox; receives dequeue from the local inbox. No action peeks at remote node state — all decisions are based on message payloads.
+The spec covers the connection lifecycle between peers using a **message consumption model**.
+
+In a real network, peers communicate only through messages — no node can inspect another node's internal state. The spec enforces this same constraint: each peer has an inbox (FIFO queue) per connection. Sending appends to the remote peer's inbox; receiving dequeues from the local inbox. No action reads remote node variables directly — all decisions are based solely on message payloads. This means that any property the model checker verifies holds under the same information constraints that real implementations face.
 
 1. **Handshake** — `version` / `verack` exchange. Version validation is deterministic: peers whose advertised version is below `MinPeerProtoVersion` are rejected.
 2. **Keepalive** — `ping` / `pong` with nonce echo, triggered when a connection is idle.
@@ -41,18 +43,27 @@ stateDiagram-v2
         block_received --> getdata_sent : SendGetData
         getdata_sent --> synced : RecvBlock (caught up)
     }
+
+    note right of sync
+        ping/pong can fire from any
+        post-handshake state when idle
+    end note
 ```
 
 The block sync states are only entered when n has fewer blocks than m (determined from the inv payload). Once n catches up (`synced`), the session for that direction is complete — m independently goes through the same states from its own perspective if it also lags n.
 
 The spec checks:
-- **Liveness** — `AllSynced`: eventually all peers reach the same block height.
+- **Liveness** — `EventualConsensus`: eventually all peers reach the same block height.
 - **Safety invariants** from ZIP-0204:
   - `InvCountBounded` / `GetDataCountBounded` — inventory vectors carry ≤ 50,000 entries.
   - `HeadersCountBounded` — headers messages carry ≤ 160 headers.
   - `VersionBounded` — peers advertise a version ≥ `MinPeerProtoVersion` (170002).
   - `PingOnEstablished` — ping nonces are only active after the handshake completes.
   - `SyncDirection` — a peer only enters sync states when it has ≤ blocks than its partner.
+
+## What is not modeled
+
+- **Peer discovery** — the spec assumes a fixed set of peers (`InitialPeers`) that already know about each other. DNS seed lookups, `addr`/`getaddr` message exchange, and dynamic peer set changes are not included. Peer discovery is orthogonal to the connection-level protocol — it determines *who* you connect to, not *how* the connection behaves once established. Excluding it keeps the state space focused on the properties we want to verify (handshake correctness, sync convergence, keepalive bounds). See [#2](https://github.com/oxarbitrage/zcash-p2p-spec/issues/2) for discussion.
 
 ## Running the model checker
 
@@ -82,7 +93,7 @@ For symmetry to work, peers must be declared as **model values** (abstract atoms
 CONSTANT peer1 = peer1   \* model value
 ```
 
-**Important caveat:** symmetry reduction is sound for safety properties but can theoretically miss liveness counterexamples (a known TLC limitation). The 2-peer config intentionally omits symmetry to give a complete, trustworthy proof of the `AllSynced` liveness property.
+**Important caveat:** symmetry reduction is sound for safety properties but can theoretically miss liveness counterexamples (a known TLC limitation). The 2-peer config intentionally omits symmetry to give a complete, trustworthy proof of the `EventualConsensus` liveness property.
 
 ## Generated PDFs
 

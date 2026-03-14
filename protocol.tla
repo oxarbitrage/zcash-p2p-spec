@@ -1,5 +1,19 @@
 ---- MODULE protocol ----
-(* https://zips.z.cash/zip-0204 *)
+(*
+    Zcash P2P protocol specification following ZIP-0204.
+    https://zips.z.cash/zip-0204
+
+    Models the connection lifecycle between peers: handshake (version/verack),
+    keepalive (ping/pong), block synchronization (inv/getheaders/headers/getdata/block),
+    and timeout-based disconnection.
+
+    Communication uses a message consumption model — each peer has a per-connection
+    FIFO inbox and all decisions are based on message payloads only, matching the
+    information constraints of a real network.
+
+    The spec verifies one liveness property (all peers eventually reach the same
+    block height) and several safety invariants derived from ZIP-0204 bounds.
+*)
 
 EXTENDS TLC, Naturals, Sequences, FiniteSets, messages
 
@@ -290,7 +304,7 @@ Spec ==
     /\ [][Next]_vars
     /\ WF_vars(Next)
 
-AllSynced == <> \A i, j \in InitialPeers : nodes[i].blocks = nodes[j].blocks
+EventualConsensus == <> \A i, j \in InitialPeers : nodes[i].blocks = nodes[j].blocks
 
 ----
 \* ZIP-0204 invariants: safety properties checked at every reachable state.

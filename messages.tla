@@ -1,8 +1,13 @@
 ---- MODULE messages ----
-EXTENDS Naturals, FiniteSets
+(*
+    Message constructors for the Zcash P2P wire protocol (ZIP-0204).
 
-\* Timestamps are omitted from message constructors: no action or invariant reads them,
-\* and including clock-varying values would unnecessarily inflate the TLC state space.
+    Each operator builds a record with a header (magic number, command name)
+    and a payload whose fields mirror the on-wire format. Fields that are
+    irrelevant to the properties being verified are set to constant values
+    to keep the TLC state space manageable.
+*)
+EXTENDS Naturals, FiniteSets
 
 MakeVersion(from, to, blocks) == [
     header  |-> [ magic |-> 619259748, command |-> "version" ],
