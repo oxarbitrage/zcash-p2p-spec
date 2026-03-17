@@ -98,6 +98,36 @@ RecvVerack ==
                     ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
+\* n receives an unexpected version from m while already past the handshake.
+\* This models a reconnecting peer whose old connection was torn down unilaterally.
+\* n resets to init, matching Zebra's DuplicateHandshake disconnect behavior.
+RecvVersionReset ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            /\ nodes[n].conn[m] \notin {"init", "version_sent"}
+            /\ Len(nodes[n].inbox[m]) > 0
+            /\ Head(nodes[n].inbox[m]).header.command = "version"
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].inbox[m]        = Tail(@),
+                    ![n].conn[m]         = "init",
+                    ![n].ping_nonce[m]   = 0,
+                    ![n].last_recv_at[m] = clock ]
+            /\ UNCHANGED << clock >>
+
+\* n discards a non-version message from m while waiting for the handshake.
+\* After a unilateral disconnect, stale messages from the old connection may still
+\* be in the inbox. Matches Zebra's behavior of ignoring non-version messages
+\* during the handshake phase.
+DiscardStaleMessage ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            /\ nodes[n].conn[m] = "version_sent"
+            /\ Len(nodes[n].inbox[m]) > 0
+            /\ Head(nodes[n].inbox[m]).header.command \notin {"version", "verack", "reject"}
+            /\ nodes' = [ nodes EXCEPT
+                    ![n].inbox[m] = Tail(@) ]
+            /\ UNCHANGED << clock >>
+
 \* n receives a reject from m, resetting to init.
 RecvReject ==
     \E n \in InitialPeers:
@@ -259,7 +289,11 @@ SendGetData ==
 
 \* --- Disconnection ---
 
-\* Bilateral disconnect: models TCP RST — both sides reset simultaneously.
+\* Unilateral disconnect: models TCP FIN — only the detecting side resets.
+\* The remote peer's inbox from n is also cleared (the TCP pipe is broken,
+\* so messages in transit are lost), but m's connection state is unchanged —
+\* m will independently detect the timeout and disconnect on its own.
+\* This matches Zebra's implementation where each side detects idleness independently.
 Disconnect ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
@@ -269,11 +303,8 @@ Disconnect ==
                     ![n].inbox[m]        = <<>>,
                     ![m].inbox[n]        = <<>>,
                     ![n].conn[m]         = "init",
-                    ![m].conn[n]         = "init",
                     ![n].ping_nonce[m]   = 0,
-                    ![m].ping_nonce[n]   = 0,
-                    ![n].last_recv_at[m] = clock,
-                    ![m].last_recv_at[n] = clock ]
+                    ![n].last_recv_at[m] = clock ]
             /\ UNCHANGED << clock >>
 
 ----
@@ -287,6 +318,8 @@ Next ==
     \/ Tick
     \/ SendVersion
     \/ RecvVersion
+    \/ RecvVersionReset
+    \/ DiscardStaleMessage
     \/ RecvVerack
     \/ RecvReject
     \/ SendPing

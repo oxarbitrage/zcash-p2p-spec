@@ -17,7 +17,7 @@ In a real network, peers communicate only through messages — no node can inspe
 1. **Handshake** — `version` / `verack` exchange. Version validation is deterministic: peers whose advertised version is below `MinPeerProtoVersion` are rejected.
 2. **Keepalive** — `ping` / `pong` with nonce echo, triggered when a connection is idle.
 3. **Block sync** — `inv` → `getheaders` → `headers` → `getdata` → `block`, looping until the lagging peer catches up. Both peers exchange invs before either processes the other's.
-4. **Disconnection** — bilateral (TCP RST): if no message is received within `DisconnectTimeout` ticks, both sides reset to `init`.
+4. **Disconnection** — unilateral (TCP FIN): if no message is received within `DisconnectTimeout` ticks, the detecting side resets to `init` and the TCP pipe is torn down. The remote peer discovers the disconnection independently via its own timeout. Stale messages from the old connection are discarded during the new handshake, and unexpected version messages on a post-handshake connection trigger a reset — matching [Zebra](https://github.com/ZcashFoundation/zebra)'s `DuplicateHandshake` behavior.
 
 Each connection is modeled as an explicit state machine from the perspective of peer **n** tracking its relationship with peer **m**. Ping/pong can fire from any post-handshake state when the connection is idle.
 
@@ -32,6 +32,7 @@ stateDiagram-v2
     state "Handshake" as hs {
         version_sent --> established : RecvVersion (valid)
         version_sent --> init : RecvVersion (invalid)
+        version_sent --> version_sent : DiscardStaleMessage
     }
 
     state "Block sync (n lags m)" as sync {
@@ -47,6 +48,11 @@ stateDiagram-v2
     note right of sync
         ping/pong can fire from any
         post-handshake state when idle
+    end note
+
+    note left of sync
+        RecvVersionReset transitions any
+        post-handshake state back to init
     end note
 ```
 
