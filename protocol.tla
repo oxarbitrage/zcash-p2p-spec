@@ -1,18 +1,17 @@
 ---- MODULE protocol ----
 (*
-    Zcash P2P protocol specification following ZIP-0204.
-    https://zips.z.cash/zip-0204
+Zcash P2P protocol specification following ZIP-204.
 
-    Models the connection lifecycle between peers: handshake (version/verack),
-    keepalive (ping/pong), block synchronization (inv/getheaders/headers/getdata/block),
-    and timeout-based disconnection.
+Models the connection lifecycle between peers: handshake (version/verack),
+keepalive (ping/pong), block synchronization (inv/getheaders/headers/getdata/block),
+and timeout-based disconnection.
 
-    Communication uses a message consumption model — each peer has a per-connection
-    FIFO inbox and all decisions are based on message payloads only, matching the
-    information constraints of a real network.
+Communication uses a message consumption model — each peer has a per-connection
+FIFO inbox and all decisions are based on message payloads only, matching the
+information constraints of a real network.
 
-    The spec verifies one liveness property (all peers eventually reach the same
-    block height) and several safety invariants derived from ZIP-0204 bounds.
+The spec verifies one liveness property (all peers eventually reach the same
+block height) and several safety invariants derived from ZIP-204 bounds.
 *)
 
 EXTENDS TLC, Naturals, Sequences, FiniteSets, messages
@@ -34,7 +33,6 @@ Symmetry == Permutations(InitialPeers)
 \* For each initial peer construct a set of all other peers.
 OtherPeers == [ n \in InitialPeers |-> InitialPeers \ { n } ]
 
-----
 Init ==
     /\ clock = 0
     /\ \E blockset \in [ InitialPeers -> (1..MaxBlock) ] :
@@ -45,6 +43,8 @@ Init ==
             last_recv_at |-> [ j \in OtherPeers[i] |-> 0 ],
             blocks       |-> 1..blockset[i]
         ]]
+
+----
 
 \* --- Handshake ---
 
@@ -276,6 +276,8 @@ Disconnect ==
                     ![m].last_recv_at[n] = clock ]
             /\ UNCHANGED << clock >>
 
+----
+
 Tick ==
     /\ clock < MaxClock
     /\ clock' = clock + 1
@@ -304,6 +306,7 @@ Spec ==
     /\ [][Next]_vars
     /\ WF_vars(Next)
 
+\* Liveness property: all peers eventually reach the same block height.
 EventualConsensus == <> \A i, j \in InitialPeers : nodes[i].blocks = nodes[j].blocks
 
 ----

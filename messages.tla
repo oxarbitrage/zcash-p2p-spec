@@ -1,11 +1,11 @@
 ---- MODULE messages ----
 (*
-    Message constructors for the Zcash P2P wire protocol (ZIP-0204).
+Message constructors for the Zcash P2P wire protocol (ZIP-0204).
 
-    Each operator builds a record with a header (magic number, command name)
-    and a payload whose fields mirror the on-wire format. Fields that are
-    irrelevant to the properties being verified are set to constant values
-    to keep the TLC state space manageable.
+Each operator builds a record with a header (magic number, command name)
+and a payload whose fields mirror the on-wire format. Fields that are
+irrelevant to the properties being verified are set to constant values
+to keep the TLC state space manageable.
 *)
 EXTENDS Naturals, FiniteSets
 
