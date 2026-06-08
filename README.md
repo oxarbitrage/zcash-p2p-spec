@@ -7,6 +7,7 @@ A TLA+ formal specification of the Zcash peer-to-peer network protocol, followin
 - [`messages.tla`](messages.tla) — Message constructors for all protocol messages (`version`, `verack`, `ping`, `pong`, `inv`, `getheaders`, `headers`, `getdata`, `block`, `reject`).
 - [`protocol.tla`](protocol.tla) — Protocol actions, connection state machine, and liveness property.
 - [`protocol.cfg`](protocol.cfg) — TLC model checker configuration.
+- [`sync_scheduler.tla`](sync_scheduler.tla) — Download-scheduler / inventory-routing model that reproduces the Zebra sync stall (see below).
 
 ## What is modeled
 
@@ -70,6 +71,31 @@ The spec checks:
 ## What is not modeled
 
 - **Peer discovery** — the spec assumes a fixed set of peers (`InitialPeers`) that already know about each other. DNS seed lookups, `addr`/`getaddr` message exchange, and dynamic peer set changes are not included. Peer discovery is orthogonal to the connection-level protocol — it determines *who* you connect to, not *how* the connection behaves once established. Excluding it keeps the state space focused on the properties we want to verify (handshake correctness, sync convergence, keepalive bounds). See [#2](https://github.com/oxarbitrage/zcash-p2p-spec/issues/2) for discussion.
+
+## Sync scheduler (download-pipeline stall)
+
+[`sync_scheduler.tla`](sync_scheduler.tla) models the layer *above* the per-connection
+protocol: the inventory-routing registry and block-download scheduler that pick *which*
+peer to ask for each block. This is where Zebra's genesis-to-tip sync stall lived
+([ZcashFoundation/zebra#10679](https://github.com/ZcashFoundation/zebra/pull/10679),
+symptom [#5709](https://github.com/ZcashFoundation/zebra/issues/5709)). Two boolean
+constants select Zebra's pre- and post-fix behaviour, and the model reproduces the stall
+as a TLC counterexample under the buggy behaviour while satisfying both safety and
+liveness under the fix.
+
+| Config | Behaviour | Checks | Expected |
+|---|---|---|---|
+| [`sync_scheduler_fixed.cfg`](sync_scheduler_fixed.cfg) | fixed | invariants + liveness | passes |
+| [`sync_scheduler_buggy.cfg`](sync_scheduler_buggy.cfg) | buggy | `EventuallyAllVerified` | **violated** (the stall) |
+| [`sync_scheduler_poison.cfg`](sync_scheduler_poison.cfg) | buggy | `RegistryHonest` | **violated** (timeout ≠ notfound) |
+
+```bash
+java -jar tla2tools.jar -config sync_scheduler_fixed.cfg  sync_scheduler.tla  # passes
+java -jar tla2tools.jar -config sync_scheduler_buggy.cfg  sync_scheduler.tla  # liveness stall
+java -jar tla2tools.jar -config sync_scheduler_poison.cfg sync_scheduler.tla  # registry poisoning
+```
+
+Full write-up: [`documents/sync-stall-modeling.md`](documents/sync-stall-modeling.md).
 
 ## Running the model checker
 
