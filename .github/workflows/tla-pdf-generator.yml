@@ -7,6 +7,8 @@ on:
     paths:
       - 'protocol.tla'
       - 'messages.tla'
+      - 'sync_scheduler.tla'
+      - 'v2/*.tla'
   workflow_dispatch:
 
 jobs:
@@ -43,9 +45,18 @@ jobs:
         ps2pdf protocol.ps protocol.pdf
         java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade messages.tla
         ps2pdf messages.ps messages.pdf
+        java -cp tla2tools.jar tla2tex.TLA -shade -noPcalShade sync_scheduler.tla
+        ps2pdf sync_scheduler.ps sync_scheduler.pdf
+        (
+          cd v2
+          for mod in protocol streams records; do
+            java -cp ../tla2tools.jar tla2tex.TLA -shade -noPcalShade $mod.tla
+            ps2pdf $mod.ps ../v2-$mod.pdf
+          done
+        )
 
     - name: Move PDFs to documents folder
-      run: mv -f protocol.pdf messages.pdf documents/
+      run: mv -f protocol.pdf messages.pdf sync_scheduler.pdf v2-*.pdf documents/
 
     - name: Push documents
       uses: stefanzweifel/git-auto-commit-action@v5
