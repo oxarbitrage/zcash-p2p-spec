@@ -111,9 +111,13 @@ streams. The legacy model above is unchanged; the draft is pinned at revision
   instead of one inbox per connection, so the transport's "streams are mutually
   independent" guarantee is modeled as free reordering across streams. FIN is a
   queue sentinel; RESET_STREAM and STOP_SENDING are flags that can overtake data.
-- [`v2/records.tla`](v2/records.tla) — `init` and header-announcement records.
+- [`v2/records.tla`](v2/records.tla) — `init`, header-announcement, `get-headers`
+  and `get-blocks` records.
 - [`v2/protocol.tla`](v2/protocol.tla) — connection setup, the `init` handshake
-  with version negotiation, and block announcement streams (Phase 1).
+  with version negotiation, block announcement streams, and headers-first
+  synchronization over `get-headers` / `get-blocks` request streams (one
+  request and its response per bidirectional stream; the responder may answer
+  before the requester's FIN and may finish after any complete entry).
 
 ```mermaid
 sequenceDiagram
@@ -135,13 +139,21 @@ Two boolean constants select the receiver's reading of the draft:
 streams arriving before the local handshake completes are refused with
 `REFUSED` rather than buffered).
 
-| Config | Reading | Checks | Expected |
+| Config | Focus | Checks | Expected |
 |---|---|---|---|
-| [`v2/protocol.cfg`](v2/protocol.cfg) | tolerant | invariants + liveness | passes (complete) |
-| [`v2/protocol_refuse.cfg`](v2/protocol_refuse.cfg) | refuse pre-handshake streams | invariants + liveness | passes (complete) |
+| [`v2/protocol.cfg`](v2/protocol.cfg) | headers-first sync, 3-block chain | invariants + `EventualConsensus` | passes (complete, ~330k states) |
+| [`v2/protocol_restart.cfg`](v2/protocol_restart.cfg) | announcement stream finish/reset + replacement | invariants + liveness | passes (complete, ~1.4M states) |
+| [`v2/protocol_refuse.cfg`](v2/protocol_refuse.cfg) | refuse streams that arrive pre-handshake | invariants + liveness | passes (complete) |
 | [`v2/protocol_obsolete.cfg`](v2/protocol_obsolete.cfg) | a peer may be below `MinVersion` | invariants + liveness | passes (`OBSOLETE` only) |
-| [`v2/protocol_strict.cfg`](v2/protocol_strict.cfg) | strict singleton | `NoHonestProtocolError` | **violated** (replacement race) |
-| [`v2/protocol_3peers.cfg`](v2/protocol_3peers.cfg) | tolerant, symmetry | invariants | bounded, no error |
+| [`v2/protocol_strict.cfg`](v2/protocol_strict.cfg) | strict singleton reading | `NoHonestProtocolError` | **violated** (replacement race) |
+| [`v2/protocol_3peers.cfg`](v2/protocol_3peers.cfg) | 3 peers, symmetry | invariants | bounded, no error |
+
+Safety invariants cover the draft's connection rules (one handshake stream,
+nothing before `init`, negotiated version is the minimum, one announcement
+stream per type, one request per stream after the handshake, response bounds,
+contiguous headers) plus `NoHonestProtocolError` and `NoHonestPenalty`: with no
+adversarial actions in the model, no close other than `OBSOLETE` and no
+misbehavior points ever occur.
 
 ```bash
 cd v2

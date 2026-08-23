@@ -3,11 +3,16 @@
 Version 2 Zcash P2P protocol specification, following the draft ZIP
 "Version 2 Zcash P2P Network Protocol" (zcash/zips#1344).
 
-Phase 1 models connection setup over the stream layer of streams.tla:
-the init handshake on the dedicated handshake stream, protocol version
-negotiation, and the long-lived block announcement streams, including the
-rule that at most one announcement stream of a type may be open per
-direction and the sender's option to replace a finished or reset stream.
+Models connection setup and block synchronization over the stream layer of
+streams.tla: the init handshake on the dedicated handshake stream, protocol
+version negotiation, the long-lived block announcement streams (including
+the rule that at most one announcement stream of a type may be open per
+direction and the sender's option to replace a finished or reset stream),
+and headers-first synchronization over get-headers and get-blocks request
+streams, each carrying exactly one request and its response.
+
+Blocks are heights on one linear chain: only the peer at the highest height
+extends it, and a peer that is behind downloads the heights it lacks.
 
 Communication keeps the legacy model's message consumption discipline: a peer
 decides only from its own records; the only place both peers' records are
@@ -37,6 +42,8 @@ EXTENDS TLC, Naturals, Sequences, FiniteSets, streams, records
 CONSTANT InitialPeers        \* set of peers
 CONSTANT MaxBlock            \* maximum block height (initial and mined)
 CONSTANT MaxRestarts         \* finish/reset of own announcement streams, per peer pair
+CONSTANT MaxHeaders          \* headers per get-headers response (draft: 160)
+CONSTANT MaxBlocksPerRequest \* hashes per get-blocks request (draft: 128)
 CONSTANT MinVersion          \* minimum protocol version of the draft (not yet assigned)
 CONSTANT Versions            \* protocol versions a peer may advertise
 CONSTANT StrictSingleton     \* see module comment
@@ -69,6 +76,8 @@ Init ==
             peer_tip   |-> [ j \in OtherPeers[i] |-> 0 ],
             announced  |-> [ j \in OtherPeers[i] |-> 0 ],
             restarts   |-> [ j \in OtherPeers[i] |-> 0 ],
+            want       |-> [ j \in OtherPeers[i] |-> <<>> ],
+            score      |-> [ j \in OtherPeers[i] |-> 0 ],
             blocks     |-> 1..blockset[i],
             my_version |-> verset[i]
         ]]
@@ -97,6 +106,20 @@ LiveAnn(n, m, t) == { sid \in StreamIds(n, m) :
                         /\ S(n, m, sid).status = "open"
                         /\ S(n, m, sid).rtype = t
                         /\ S(n, m, sid).out = "open" }
+
+\* Request streams n has outstanding toward m.
+OpenReq(n, m) == { sid \in StreamIds(n, m) :
+                     /\ sid[1] = n
+                     /\ S(n, m, sid).status = "open"
+                     /\ S(n, m, sid).rtype \in RequestTypes }
+
+\* The sequence of heights a..b (empty when b < a).
+Range(a, b) == [ i \in 1..(b - a + 1) |-> a + i - 1 ]
+
+Contiguous(seq) == \A i \in 1..(Len(seq) - 1) : seq[i + 1] = seq[i] + 1
+
+\* Heights of seq above h.
+Above(seq, h) == SelectSeq(seq, LAMBDA x : x > h)
 
 \* Handshake streams n knows about on its connection with m.
 HandshakeStreams(n, m) == { sid \in StreamIds(n, m) :
@@ -171,7 +194,7 @@ SendInitResponder ==
 \* n consumes the type byte of a stream m opened. What happens depends on the
 \* type and on n's own state:
 \*   0x00 from the responder, or a second 0x00      -> PROTOCOL_ERROR ("Connection Handshake")
-\*   announcement before n's handshake completed    -> refuse with REFUSED, or wait (RefusePreHandshake)
+\*   any other stream before n's handshake completed-> refuse with REFUSED, or wait (RefusePreHandshake)
 \*   announcement duplicating an open one of type t -> PROTOCOL_ERROR, or accept (StrictSingleton)
 \*   otherwise                                      -> record the type
 RecvTypeByte ==
@@ -201,17 +224,17 @@ RecvTypeByte ==
                                /\ nodes' = accept
                             \/ /\ ~legalHs
                                /\ nodes' = Close(nodes, n, m, "PROTOCOL_ERROR")
-                      \/ /\ t \in AnnTypes
+                      \/ /\ t \in AnnTypes \cup RequestTypes
                          /\ \/ /\ ~HandshakeComplete(n, m)
                                /\ RefusePreHandshake
                                /\ nodes' = Settle([ nodes EXCEPT
                                         ![n].streams[m][sid] = ClosedStream,
-                                        ![m].streams[n][sid] = PutStop(@, "REFUSED") ],
+                                        ![m].streams[n][sid] = Refuse(@, t, "REFUSED") ],
                                       n, m, sid)
                             \/ /\ HandshakeComplete(n, m)
-                               /\ \/ /\ StrictSingleton /\ dup
+                               /\ \/ /\ t \in AnnTypes /\ StrictSingleton /\ dup
                                      /\ nodes' = Close(nodes, n, m, "PROTOCOL_ERROR")
-                                  \/ /\ ~(StrictSingleton /\ dup)
+                                  \/ /\ ~(t \in AnnTypes /\ StrictSingleton /\ dup)
                                      /\ nodes' = accept
 
 \* n consumes m's init record from the handshake stream (draft: "Handshake
@@ -324,11 +347,145 @@ ResetAnnouncementStream ==
 
 ----
 
+\* --- Request streams: headers-first synchronization ---
+
+\* n is behind m (from m's init or announcements), has nothing queued to
+\* download and no request outstanding: it asks m for headers after its own
+\* tip (draft: "Headers-First Synchronization", step 1). The request and the
+\* FIN of n's sending direction are written together.
+SendGetHeaders ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            /\ Connected(n, m)
+            /\ HandshakeComplete(n, m)
+            /\ nodes[n].peer_tip[m] > Height(n)
+            /\ nodes[n].want[m] = <<>>
+            /\ OpenReq(n, m) = {}
+            /\ FreeSlots(n, m) # {}
+            /\ LET sid == << n, FreeSlot(n, m) >>
+               IN nodes' = [ nodes EXCEPT
+                    ![n].streams[m][sid] = RequesterStream(GetHeadersType),
+                    ![m].streams[n][sid] = PeerStream(GetHeadersType,
+                                              << MakeGetHeaders(Height(n)), FIN >>) ]
+
+\* n serves a get-headers request from m: the headers after the locator, at
+\* most MaxHeaders of them, then FIN. Serving may start as soon as the
+\* request is complete, before m's FIN has been consumed (draft: "Request
+\* Streams").
+ServeGetHeaders ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            \E sid \in StreamIds(n, m):
+                LET s == S(n, m, sid)
+                IN
+                /\ Connected(n, m)
+                /\ HandshakeComplete(n, m)
+                /\ s.status = "open"
+                /\ s.rtype = GetHeadersType
+                /\ s.out = "open"
+                /\ Len(s.inq) > 0
+                /\ Head(s.inq).kind = "get-headers"
+                /\ LET loc  == Head(s.inq).locator
+                       hdrs == Range(loc + 1, Min(loc + MaxHeaders, Height(n)))
+                   IN nodes' = [ nodes EXCEPT
+                        ![n].streams[m][sid] = Collapse([ @ EXCEPT !.inq = Tail(@),
+                                                                   !.out = "finished" ]),
+                        ![m].streams[n][sid] = PutData(PutData(@, MakeHeaders(hdrs)), FIN) ]
+
+\* n consumes a headers response from m (draft: "get-headers"):
+\*   more than MaxHeaders, or not contiguous -> discard, misbehavior penalty
+\*   otherwise                               -> queue the heights n lacks
+RecvHeaders ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            \E sid \in OpenReq(n, m):
+                LET s == S(n, m, sid)
+                IN
+                /\ Connected(n, m)
+                /\ s.rtype = GetHeadersType
+                /\ Len(s.inq) > 0
+                /\ Head(s.inq).kind = "headers"
+                /\ LET hdrs == Head(s.inq).heights
+                   IN
+                   \/ /\ Len(hdrs) <= MaxHeaders /\ Contiguous(hdrs)
+                      /\ nodes' = [ nodes EXCEPT
+                              ![n].streams[m][sid].inq = Tail(@),
+                              ![n].want[m]             = Above(hdrs, Height(n)) ]
+                   \/ /\ ~(Len(hdrs) <= MaxHeaders /\ Contiguous(hdrs))
+                      /\ nodes' = [ nodes EXCEPT
+                              ![n].streams[m][sid].inq = Tail(@),
+                              ![n].score[m]            = @ + 20 ]
+
+\* n requests the next batch of blocks it wants from m, at most
+\* MaxBlocksPerRequest of them (draft: "get-blocks").
+SendGetBlocks ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            /\ Connected(n, m)
+            /\ nodes[n].want[m] # <<>>
+            /\ OpenReq(n, m) = {}
+            /\ FreeSlots(n, m) # {}
+            /\ LET sid   == << n, FreeSlot(n, m) >>
+                   batch == SubSeq(nodes[n].want[m], 1,
+                                   Min(MaxBlocksPerRequest, Len(nodes[n].want[m])))
+               IN nodes' = [ nodes EXCEPT
+                    ![n].streams[m][sid] = RequesterStream(GetBlocksType),
+                    ![m].streams[n][sid] = PeerStream(GetBlocksType,
+                                              << MakeGetBlocks(batch), FIN >>) ]
+
+\* n serves a get-blocks request from m. It may finish after any complete
+\* entry, delivering fewer blocks than requested (draft: "get-blocks"); the
+\* requester re-requests the remainder.
+ServeGetBlocks ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            \E sid \in StreamIds(n, m):
+                LET s == S(n, m, sid)
+                IN
+                /\ Connected(n, m)
+                /\ HandshakeComplete(n, m)
+                /\ s.status = "open"
+                /\ s.rtype = GetBlocksType
+                /\ s.out = "open"
+                /\ Len(s.inq) > 0
+                /\ Head(s.inq).kind = "get-blocks"
+                /\ LET asked == Head(s.inq).heights
+                       held  == SelectSeq(asked, LAMBDA h : h \in nodes[n].blocks)
+                   IN
+                   \E k \in 1..Len(held) :
+                       nodes' = [ nodes EXCEPT
+                            ![n].streams[m][sid] = Collapse([ @ EXCEPT !.inq = Tail(@),
+                                                                       !.out = "finished" ]),
+                            ![m].streams[n][sid] = PutData(PutData(@, MakeBlocks(SubSeq(held, 1, k))), FIN) ]
+
+\* n consumes delivered blocks from m and extends its chain with them.
+RecvBlocks ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            \E sid \in OpenReq(n, m):
+                LET s == S(n, m, sid)
+                IN
+                /\ Connected(n, m)
+                /\ s.rtype = GetBlocksType
+                /\ Len(s.inq) > 0
+                /\ Head(s.inq).kind = "blocks"
+                /\ LET got    == Head(s.inq).heights
+                       blocks == nodes[n].blocks \cup { got[i] : i \in 1..Len(got) }
+                   IN nodes' = [ nodes EXCEPT
+                        ![n].streams[m][sid].inq = Tail(@),
+                        ![n].blocks              = blocks,
+                        ![n].want[m]             = Above(nodes[n].want[m], Cardinality(blocks)) ]
+
+----
+
 \* --- Stream teardown ---
 
-\* n consumes a FIN. A FIN before the type byte, or on the handshake stream,
-\* is handled per the draft (PROTOCOL_ERROR; graceful close) although honest
-\* peers in this phase never produce either.
+\* n consumes a FIN: the peer's sending direction is over, and the stream
+\* closes once n's own direction is too. On a request stream the FIN may
+\* arrive after the response was already served; it is never "data after a
+\* complete request". A FIN before the type byte, or on the handshake
+\* stream, is handled per the draft (PROTOCOL_ERROR; graceful close)
+\* although honest peers never produce either.
 RecvFin ==
     \E n \in InitialPeers:
         \E m \in OtherPeers[n]:
@@ -343,9 +500,11 @@ RecvFin ==
                       /\ nodes' = Close(nodes, n, m, "PROTOCOL_ERROR")
                    \/ /\ s.rtype = HandshakeType
                       /\ nodes' = Close(nodes, n, m, "NO_ERROR")
-                   \/ /\ s.rtype \in AnnTypes
-                      /\ nodes' = Settle([ nodes EXCEPT ![n].streams[m][sid] = ClosedStream ],
-                                         n, m, sid)
+                   \/ /\ s.rtype \in AnnTypes \cup RequestTypes
+                      /\ nodes' = Settle([ nodes EXCEPT
+                              ![n].streams[m][sid] = Collapse([ @ EXCEPT !.inq = Tail(@),
+                                                                         !.in_done = TRUE ]) ],
+                            n, m, sid)
 
 \* n observes a RESET_STREAM from m. Queued data on that stream is discarded.
 RecvReset ==
@@ -385,10 +544,13 @@ RecvStop ==
 
 \* --- Chain growth ---
 
-\* n finds a new block, giving it something to announce.
+\* The peer at the chain tip finds a new block, giving it something to
+\* announce. Only the highest peer extends the chain, which keeps the model a
+\* single linear chain that the others catch up with.
 MineBlock ==
     \E n \in InitialPeers:
         /\ Height(n) < MaxBlock
+        /\ \A m \in OtherPeers[n] : Height(m) <= Height(n)
         /\ nodes' = [ nodes EXCEPT ![n].blocks = @ \cup { Height(n) + 1 } ]
 
 ----
@@ -404,6 +566,12 @@ Next ==
     \/ RecvAnnouncement
     \/ FinishAnnouncementStream
     \/ ResetAnnouncementStream
+    \/ SendGetHeaders
+    \/ ServeGetHeaders
+    \/ RecvHeaders
+    \/ SendGetBlocks
+    \/ ServeGetBlocks
+    \/ RecvBlocks
     \/ RecvFin
     \/ RecvReset
     \/ RecvStop
@@ -435,6 +603,10 @@ AnnouncementsFlow ==
     <>[] \A n \in InitialPeers : \A m \in OtherPeers[n] :
         nodes[n].conn[m] = "closed" \/ nodes[n].peer_tip[m] = Height(m)
 
+\* Eventually all peers hold the same chain.
+EventualConsensus ==
+    <>[] \A i, j \in InitialPeers : nodes[i].blocks = nodes[j].blocks
+
 ----
 
 \* --- Safety invariants ---
@@ -445,6 +617,7 @@ TypeOK ==
         /\ nodes[n].close[m] \in ErrorCodes \cup { NoCode }
         /\ nodes[n].version[m] \in Versions \cup { 0 }
         /\ nodes[n].restarts[m] \in 0..MaxRestarts
+        /\ nodes[n].score[m] \in Nat
         /\ \A sid \in StreamIds(n, m) :
             /\ S(n, m, sid).status \in { "none", "open", "closed" }
             /\ S(n, m, sid).rtype \in StreamTypes \cup { "unknown" }
@@ -492,6 +665,31 @@ CloseJustified ==
         nodes[n].close[m] = "OBSOLETE" =>
             \/ nodes[n].my_version < MinVersion
             \/ nodes[m].my_version < MinVersion
+
+\* Blocks are always a contiguous chain from genesis.
+BlocksContiguous ==
+    \A n \in InitialPeers : nodes[n].blocks = 1..Height(n)
+
+\* Request streams are only opened after the handshake completes, one at a
+\* time per peer (draft: "Connection Handshake"; ZIP-204 in-transit limit).
+RequestsAfterHandshake ==
+    \A n \in InitialPeers : \A m \in OtherPeers[n] :
+        /\ OpenReq(n, m) # {} => HandshakeComplete(n, m)
+        /\ Cardinality(OpenReq(n, m)) <= 1
+
+\* Responses in flight respect the draft's bounds: at most MaxHeaders
+\* contiguous headers, at most MaxBlocksPerRequest hashes per get-blocks.
+ResponsesBounded ==
+    \A n \in InitialPeers : \A m \in OtherPeers[n] : \A sid \in StreamIds(n, m) :
+        \A i \in 1..Len(S(n, m, sid).inq) :
+            LET x == S(n, m, sid).inq[i]
+            IN /\ x.kind = "headers"    => Len(x.heights) <= MaxHeaders /\ Contiguous(x.heights)
+               /\ x.kind = "get-blocks" => Len(x.heights) <= MaxBlocksPerRequest
+               /\ x.kind = "blocks"     => Len(x.heights) <= MaxBlocksPerRequest
+
+\* Honest peers never earn a misbehavior penalty.
+NoHonestPenalty ==
+    \A n \in InitialPeers : \A m \in OtherPeers[n] : nodes[n].score[m] = 0
 
 \* No interleaving of conformant behaviour ends in a protocol error. There are
 \* no adversarial actions in this phase, so any close other than OBSOLETE is a

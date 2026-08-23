@@ -9,7 +9,8 @@ still moving; section names below refer to that revision. The draft's
 not yet been updated for the new protocol — this document describes that
 update, phase by phase.
 
-Reference implementation consulted: Zebra's five-PR draft stack
+Phases 1 and 2 are complete; this document describes both. Reference
+implementation consulted: Zebra's five-PR draft stack
 [#11273](https://github.com/ZcashFoundation/zebra/pull/11273) –
 [#11277](https://github.com/ZcashFoundation/zebra/pull/11277)
 (`zebra-network/src/peer/v2/connection.rs` on branch
@@ -80,6 +81,10 @@ Liveness (2-peer configurations): `HandshakeCompletes` and
 `AnnouncementsFlow` (every peer eventually learns every peer's final tip).
 
 ### Results
+
+State counts in this table are from the Phase 1 constants (`MaxStreams = 3`,
+`MaxBlock = 2`, `MaxRestarts = 1`); the configurations were retuned in Phase 2,
+see below.
 
 | Config | Reading | Expected | Result (2 peers, complete) |
 |---|---|---|---|
@@ -173,13 +178,70 @@ states per TLC coverage).
 - `MaxStreams = 3` is the minimum that exhibits Finding 1 (handshake stream
   plus old and new announcement stream for the initiator).
 
+## Phase 2 — request streams and headers-first synchronization
+
+### The abstraction
+
+| Draft concept | Model |
+|---|---|
+| Request stream | bidirectional stream of type `0x01` (`get-headers`) or `0x02` (`get-blocks`); the requester writes the request record and its FIN in one step (`RequesterStream`) |
+| Response | one record (`headers` / `blocks`) followed by FIN; the responder may serve as soon as the request record is consumed, before the requester's FIN |
+| Both directions done | new stream field `in_done`; a bidirectional stream collapses to `ClosedStream` only once the local sending direction is finished/reset **and** the peer's FIN has been consumed |
+| Block locator | the requester's height (single linear chain) |
+| `get-headers` response | heights `loc+1 .. min(loc+MaxHeaders, tip)`; `count = 0` is legal |
+| `get-blocks` early finish | the responder nondeterministically delivers any non-empty prefix of the held blocks and finishes ("MAY finish after any complete entry") |
+| Sync driver | `peer_tip > height ∧ want = <<>> ∧ no open request → get-headers`; `want ≠ <<>> → get-blocks` for the next `MaxBlocksPerRequest`; one request outstanding per peer |
+| Oversize / non-contiguous headers | discarded, `score += 20` (the draft's override of the generic connection-error rule) |
+| Chain growth | only the peer at the highest height mines (`MineBlock`), so there is one chain everyone catches up with |
+
+### What is checked
+
+New invariants: `BlocksContiguous`, `RequestsAfterHandshake` (requests only
+after the handshake, one at a time per peer), `ResponsesBounded`
+(≤ `MaxHeaders` contiguous headers, ≤ `MaxBlocksPerRequest` hashes),
+`NoHonestPenalty` (score stays 0). New liveness: `EventualConsensus`.
+
+### Results
+
+| Config | Focus | Result |
+|---|---|---|
+| `protocol.cfg` | 3-block chain, `MaxHeaders = 2`, `MaxBlocksPerRequest = 2`, no restarts | 332,871 states, all invariants + `HandshakeCompletes`, `AnnouncementsFlow`, `EventualConsensus` pass |
+| `protocol_restart.cfg` | 2-block chain, one finish/reset per direction, `MaxStreams = 3` | 1,402,498 states, passes |
+| `protocol_refuse.cfg` | refuse pre-handshake streams (requests included) | 31,550 states, passes |
+| `protocol_obsolete.cfg` | `OBSOLETE` path (no `EventualConsensus`: the only connection closes) | 14,654 states, passes |
+| `protocol_strict.cfg` | strict singleton | still the 12-state violation |
+
+The draft's small constants are replaced by `MaxHeaders = 2` and
+`MaxBlocksPerRequest = 2` so that synchronization takes several rounds; the
+bounds are checked as invariants on the records in flight, as in the legacy
+model.
+
+### Confirmed safe
+
+- **Responder answers before the requester's FIN.** The FIN is consumed by
+  `RecvFin` after the response was served; it is never "data after a complete
+  request". No protocol error in any configuration.
+- **Early-finished `get-blocks` responses.** The requester re-requests the
+  remainder; `EventualConsensus` holds, so the re-request loop converges.
+- **Refusing streams that arrive before the handshake completes** now also
+  covers request streams: the requester observes the responder's reset,
+  frees the stream and retries.
+
+### Lesson — refuse is two operations for a reason
+
+The first Phase 2 run failed `EventualConsensus` in the refuse
+configuration: a `get-headers` stream refused before the handshake hung
+forever and blocked every later request. The model had implemented "refuse"
+as STOP_SENDING only. The requester had already finished its sending
+direction, so STOP_SENDING told it nothing; only the RESET_STREAM of the
+responder's direction — the second half of the draft's definition of
+refusing a bidirectional stream ("Stream Types") — lets a requester learn that
+its request is dead. Zebra refuses requests with `send.reset(Refused)`, the
+half that matters. Worth keeping in mind for any implementation that refuses
+streams before reading them.
+
 ## Next phases
 
-- **Phase 2** — request streams (`get-headers`, `get-blocks`) and
-  headers-first synchronization; restores `EventualConsensus`; checks that
-  the responder answering before the requester's FIN, oversize `get-headers`
-  responses (misbehavior points, not a connection error) and early-finished
-  `get-blocks` responses are all handled without a protocol error.
 - **Phase 3** — v2 download scheduler, the part of the draft Zebra has not
   implemented yet: `REFUSED`, early finish, `CANCELLED` and silent timeout
   must never be recorded as not-found (the v1 stall bug, zebra#10679, with

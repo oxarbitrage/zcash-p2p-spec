@@ -91,7 +91,7 @@ jobs:
         fi
 
   model_check_v2:
-    name: v2 protocol (draft ZIP, stream layer + handshake)
+    name: v2 protocol (draft ZIP)
     runs-on: ubuntu-latest
 
     steps:
@@ -107,10 +107,15 @@ jobs:
     - name: Download TLC tools
       run: wget https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
 
-    - name: Tolerant receiver must verify (2 peers, complete)
+    - name: Headers-first sync must verify (2 peers, complete)
       working-directory: v2
       run: |
-        timeout 300 java -jar ../tla2tools.jar -workers auto -config protocol.cfg protocol.tla
+        timeout 600 java -jar ../tla2tools.jar -workers auto -config protocol.cfg protocol.tla
+
+    - name: Announcement stream replacement must verify (2 peers, complete)
+      working-directory: v2
+      run: |
+        timeout 1200 java -jar ../tla2tools.jar -workers auto -config protocol_restart.cfg protocol.tla
 
     - name: Refusing pre-handshake streams must verify
       working-directory: v2

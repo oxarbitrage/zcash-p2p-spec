@@ -63,3 +63,19 @@ choices (`v2/protocol.cfg`, `v2/protocol_refuse.cfg`): neither leads to a
 protocol error, and the refuse/reopen loop terminates once the `init` is
 processed. No change needed; a non-normative note that this ordering is
 expected might help implementers.
+
+## 4. Confirmed safe: request stream rules under reordering
+
+Modeled in Phase 2 (`v2/protocol.cfg`, complete state space):
+
+- A responder that begins serving as soon as the request is syntactically
+  complete, before the requester's FIN arrives ("Request Streams"), never
+  produces a protocol error on either side.
+- A `get-blocks` responder that finishes after any complete entry is handled
+  by re-requesting the remainder, and synchronization still converges.
+- The two-operation definition of *refuse* for bidirectional streams ("Stream
+  Types": cancel the peer's direction **and** reset our own) is necessary, not
+  belt-and-braces: a requester has already finished its sending direction, so
+  only the reset tells it the request is dead. A model that omitted the reset
+  hung every subsequent request. A non-normative sentence saying why both
+  operations are required might save an implementer the same mistake.

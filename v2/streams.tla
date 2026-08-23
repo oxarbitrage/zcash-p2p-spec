@@ -27,11 +27,14 @@ CONSTANT MaxStreams     \* stream slots per opener per connection
 
 \* Stream types (draft: "Stream Types"). The type is the first byte written
 \* on every stream; the receiver learns it only by consuming that byte.
-HandshakeType == "0x00"     \* bidirectional, initiator only, exactly one
-BlockAnnType  == "0x10"     \* unidirectional, long-lived
-AnnTypes      == { BlockAnnType }
-StreamTypes   == { HandshakeType } \cup AnnTypes
-BidiTypes     == { HandshakeType }
+HandshakeType  == "0x00"    \* bidirectional, initiator only, exactly one
+GetHeadersType == "0x01"    \* bidirectional request stream
+GetBlocksType  == "0x02"    \* bidirectional request stream
+BlockAnnType   == "0x10"    \* unidirectional, long-lived
+RequestTypes   == { GetHeadersType, GetBlocksType }
+AnnTypes       == { BlockAnnType }
+StreamTypes    == { HandshakeType } \cup RequestTypes \cup AnnTypes
+BidiTypes      == { HandshakeType } \cup RequestTypes
 
 \* Application error codes (draft: "Application Error Codes").
 ErrorCodes == { "NO_ERROR", "PROTOCOL_ERROR", "UNSUPPORTED_STREAM_TYPE",
@@ -58,12 +61,15 @@ StreamIds(n, m) == { n, m } \X (1..MaxStreams)
 \*   status   "none" (slot free) | "open" | "closed" (done locally, peer may not be)
 \*   rtype    stream type once known; "unknown" until the type byte is consumed
 \*   inq      data in flight toward this peer, FIN-terminated when finished
+\*   in_done  the peer's sending direction has been consumed to its FIN
+\*            (TRUE from the start on streams with no incoming direction)
 \*   in_reset error code of a RESET_STREAM from the peer, observable any time
 \*   out      this peer's own sending direction: "open" | "finished" | "reset" | "na"
 \*   stop     error code of a STOP_SENDING from the peer for our direction
 NullStream == [ status   |-> "none",
                 rtype    |-> "unknown",
                 inq      |-> <<>>,
+                in_done  |-> TRUE,
                 in_reset |-> NoCode,
                 out      |-> "na",
                 stop     |-> NoCode ]
@@ -76,15 +82,22 @@ ClosedStream == [ NullStream EXCEPT !.status = "closed" ]
 OpenerStream(t) == [ status   |-> "open",
                      rtype    |-> t,
                      inq      |-> <<>>,
+                     in_done  |-> t \notin BidiTypes,
                      in_reset |-> NoCode,
                      out      |-> "open",
                      stop     |-> NoCode ]
+
+\* The requester's record of a request stream: the request has been written
+\* and the sending direction finished in the same step (draft: "Request
+\* Streams", step 1).
+RequesterStream(t) == [ OpenerStream(t) EXCEPT !.out = "finished" ]
 
 \* The remote peer's record of the same stream: the type byte is the first
 \* queued element, followed by any records written at open time.
 PeerStream(t, payload) == [ status   |-> "open",
                             rtype    |-> "unknown",
                             inq      |-> << TypeByte(t) >> \o payload,
+                            in_done  |-> FALSE,
                             in_reset |-> NoCode,
                             out      |-> IF t \in BidiTypes THEN "open" ELSE "na",
                             stop     |-> NoCode ]
@@ -94,6 +107,18 @@ PeerStream(t, payload) == [ status   |-> "open",
 PutData(s, x)     == IF s.status = "open" THEN [ s EXCEPT !.inq = Append(@, x) ] ELSE s
 PutReset(s, code) == IF s.status = "open" THEN [ s EXCEPT !.in_reset = code ] ELSE s
 PutStop(s, code)  == IF s.status = "open" THEN [ s EXCEPT !.stop = code ] ELSE s
+
+\* Refusing a stream of type t (draft: "Stream Types"): cancel the peer's
+\* sending direction and, if the stream is bidirectional, also reset our own
+\* sending direction with the same code. Both signals land on the peer's
+\* record and may be observed in either order.
+Refuse(s, t, code) == IF t \in BidiTypes THEN PutReset(PutStop(s, code), code)
+                                         ELSE PutStop(s, code)
+
+\* A stream is done for its owner once both directions are over; it then
+\* collapses to ClosedStream.
+Done(s)     == s.in_done /\ s.out \in { "finished", "reset", "na" }
+Collapse(s) == IF Done(s) THEN ClosedStream ELSE s
 
 \* Head-of-queue classification.
 IsTypeByte(x) == x.kind = "type"
