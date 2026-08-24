@@ -9,7 +9,8 @@ still moving; section names below refer to that revision. The draft's
 not yet been updated for the new protocol — this document describes that
 update, phase by phase.
 
-All four phases are complete; this document describes them. Reference
+All four phases plus the simultaneous-dial addendum are complete; this
+document describes them. Reference
 implementation consulted: Zebra's five-PR draft stack
 [#11273](https://github.com/ZcashFoundation/zebra/pull/11273) –
 [#11277](https://github.com/ZcashFoundation/zebra/pull/11277)
@@ -359,3 +360,49 @@ non-connecting headers in some paths), and either one lets chain divergence
 — which an attacker can manufacture — turn honest peers into banned peers.
 The `perconn` violation is the draft's argument for address-keyed persistent
 scores, reproduced as a five-state loop.
+
+## Addendum — simultaneous dial (Finding 3)
+
+`v2/dial.tla` models the connection-management gap the phase models
+deliberately hid behind an atomic `Connect`: the draft's entire rule for
+duplicate connections is *"A node SHOULD maintain at most one connection to
+a given remote address"* ("Connection Management"), with no word on the
+simultaneous-open race or on which connection to keep.
+
+The model: two peers each want a connection to the other; opens and closes
+propagate asynchronously, so both can dial before either observes the
+duplicate. On observing it, a node applies one of three policies. Results:
+
+| Config | Policy | Result |
+|---|---|---|
+| `dial_tiebreak.cfg` | keep the connection dialled by the fixed lower peer | 14 states; `EventuallyOneConnection` holds |
+| `dial_outbound.cfg` | refuse the inbound duplicate (= keep the locally first) | violated: perpetual flap |
+| `dial_inbound.cfg` | accept the inbound, close the own dial | violated: perpetual flap |
+
+The flap: under any **symmetric** policy the two nodes keep *different*
+connections — each keeps the one the other closes — so both connections die,
+both nodes redial, and adversarial timing repeats the race indefinitely. The
+invariant `AtMostOnePerView` (the draft's stated rule, applied locally)
+holds throughout: the flap lives entirely in the gap the sentence leaves
+open. Only an **asymmetric** convention both sides can compute — e.g. "the
+connection dialled by the peer with the lower address survives" — makes them
+agree on a survivor.
+
+Two aggravating notes:
+
+- The model assumes the best case, where a node can even *recognize* the
+  inbound duplicate. In practice a QUIC inbound arrives from an ephemeral
+  UDP port, not the peer's canonical listen address, so matching it to an
+  outbound dial already requires an address-book lookup by IP — the draft
+  does not say whether "remote address" means the IP or the (IP, port) pair.
+- Zebra's v2 draft implementation has no duplicate-address handling at all
+  (`peer_set/initialize/v2_transport.rs`, `inbound_admission.rs`): it keeps
+  both connections. The only implementation of the SHOULD ignores it —
+  fair evidence that the rule as written is not actionable.
+
+Fairness note: the same existential-fairness pitfall as in the misbehavior
+module appeared here — weak fairness over "some accept happens" is
+discharged by the redial cycle while a specific connection's accept starves.
+Fairness is therefore per connection (each specific open, close notice and
+settle is eventually processed), and the flap counterexamples contain every
+fair action infinitely often.

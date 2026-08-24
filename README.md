@@ -175,6 +175,26 @@ java -jar ../tla2tools.jar -config sync_scheduler.cfg           sync_scheduler.t
 java -jar ../tla2tools.jar -config sync_scheduler_truncated.cfg sync_scheduler.tla  # liveness stall
 ```
 
+### v2 simultaneous dial
+
+[`v2/dial.tla`](v2/dial.tla) checks the draft's one-sentence duplicate rule —
+"A node SHOULD maintain at most one connection to a given remote address" —
+against the simultaneous-open race it does not address: two nodes dial each
+other at once, so two connections exist before either side can see the
+duplicate. The policy a node applies on spotting the duplicate is a switch.
+
+| Config | Policy | Checks | Expected |
+|---|---|---|---|
+| [`v2/dial_tiebreak.cfg`](v2/dial_tiebreak.cfg) | keep the connection dialled by the fixed lower peer | `EventuallyOneConnection` | passes |
+| [`v2/dial_outbound.cfg`](v2/dial_outbound.cfg) | each node keeps its own dial | `EventuallyOneConnection` | **violated** (flap) |
+| [`v2/dial_inbound.cfg`](v2/dial_inbound.cfg) | each node keeps the inbound | `EventuallyOneConnection` | **violated** (flap) |
+
+Any *symmetric* policy is self-defeating: each node keeps the connection the
+other closes, both die, both redial, and adversarial timing repeats the race
+forever — while the draft's stated rule (`AtMostOnePerView`) is satisfied the
+whole time. Only an asymmetric tie-break converges. Zebra's v2 draft sidesteps
+the question by not deduplicating at all.
+
 ### v2 misbehavior and banning
 
 [`v2/misbehavior.tla`](v2/misbehavior.tla) models the draft's "Misbehavior and

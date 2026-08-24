@@ -112,3 +112,35 @@ misbehavior rules by violating them:
   forever.
 
 No draft change needed; these support the text as written.
+
+## 7. "Connection Management": the duplicate-connection rule needs a tie-break
+
+**Text.** "A node SHOULD maintain at most one connection to a given remote
+address."
+
+**Problem.** The sentence does not address the simultaneous-open race: two
+nodes dial each other at once, so two connections exist before either side
+can observe the duplicate. TLC (`v2/dial.tla`) shows that any *symmetric*
+resolution policy — keep the outbound, keep the inbound, keep the locally
+first — is self-defeating when both peers apply it: each keeps the
+connection the other closes, both connections die, both nodes redial, and
+the race can repeat indefinitely. The stated rule is satisfied throughout;
+the flap lives in what the sentence does not say. Only an asymmetric
+convention both sides can compute converges (`dial_tiebreak.cfg`).
+
+Zebra's v2 draft currently implements no deduplication at all — both
+connections persist — so today the SHOULD is simply unmet.
+
+**Proposal.** Either specify the convention, e.g.:
+
+> If a node observes two connections to the same remote address (for
+> example after a simultaneous dial), the connection initiated by the peer
+> whose canonical address is numerically lower survives; the node SHOULD
+> close the other with `NO_ERROR`. A node MUST NOT treat the duplicate as a
+> protocol error.
+
+or explicitly permit coexistence ("a node MAY keep both connections until
+one idles out") so that implementations that do deduplicate cannot flap
+against ones that do not. Also worth clarifying whether "remote address"
+means the IP or the (IP, port) pair, since inbound connections arrive from
+ephemeral ports.
