@@ -141,3 +141,48 @@ jobs:
       working-directory: v2
       run: |
         timeout 120 java -jar ../tla2tools.jar -workers auto -config protocol_3peers.cfg protocol.tla || true
+
+    - name: v2 scheduler fixed behaviour must verify
+      working-directory: v2
+      run: |
+        timeout 120 java -jar ../tla2tools.jar -config sync_scheduler.cfg sync_scheduler.tla
+
+    - name: Refused-as-missing must violate registry honesty
+      working-directory: v2
+      run: |
+        if timeout 120 java -jar ../tla2tools.jar -config sync_scheduler_refused.cfg sync_scheduler.tla; then
+          echo "ERROR: expected RegistryHonest to be violated, but TLC found no error"
+          exit 1
+        else
+          echo "OK: refused-as-missing poisoning reproduced as expected"
+        fi
+
+    - name: Truncated-as-missing must reproduce the sync stall
+      working-directory: v2
+      run: |
+        if timeout 120 java -jar ../tla2tools.jar -config sync_scheduler_truncated.cfg sync_scheduler.tla; then
+          echo "ERROR: expected EventuallyAllVerified to be violated, but TLC found no error"
+          exit 1
+        else
+          echo "OK: truncation stall reproduced as expected"
+        fi
+
+    - name: Timeout-as-missing must violate registry honesty (legacy regression guard)
+      working-directory: v2
+      run: |
+        if timeout 120 java -jar ../tla2tools.jar -config sync_scheduler_timeout.cfg sync_scheduler.tla; then
+          echo "ERROR: expected RegistryHonest to be violated, but TLC found no error"
+          exit 1
+        else
+          echo "OK: legacy timeout poisoning reproduced as expected"
+        fi
+
+    - name: Eviction without redial must reproduce the sync stall
+      working-directory: v2
+      run: |
+        if timeout 120 java -jar ../tla2tools.jar -config sync_scheduler_evict.cfg sync_scheduler.tla; then
+          echo "ERROR: expected EventuallyAllVerified to be violated, but TLC found no error"
+          exit 1
+        else
+          echo "OK: unresponsive-peer eviction stall reproduced as expected"
+        fi

@@ -148,6 +148,33 @@ streams arriving before the local handshake completes are refused with
 | [`v2/protocol_strict.cfg`](v2/protocol_strict.cfg) | strict singleton reading | `NoHonestProtocolError` | **violated** (replacement race) |
 | [`v2/protocol_3peers.cfg`](v2/protocol_3peers.cfg) | 3 peers, symmetry | invariants | bounded, no error |
 
+### v2 download scheduler
+
+[`v2/sync_scheduler.tla`](v2/sync_scheduler.tla) models the layer Zebra's v2
+stack has not implemented yet (deferred to its "ibd-engine"): the scheduler
+choosing which peer to ask for each block — where the legacy sync stall
+(zebra#10679) lived. The v2 protocol gives a request four ways to end without
+a block, only one of which says anything about the peer's chain: an explicit
+per-entry **not-found**, a **REFUSED** stream reset, a **truncated** (early
+finished) response, and a cancelled **timeout**. Boolean switches mark each
+uninformative outcome as informative, and a `Redial` switch gates
+reconnection after Zebra's unresponsive-peer eviction (3 consecutive
+unanswered timeouts; 2 in the model).
+
+| Config | Behaviour | Checks | Expected |
+|---|---|---|---|
+| [`v2/sync_scheduler.cfg`](v2/sync_scheduler.cfg) | fixed (redial on, no poisoning) | invariants + liveness | passes |
+| [`v2/sync_scheduler_refused.cfg`](v2/sync_scheduler_refused.cfg) | REFUSED marks missing | `RegistryHonest` | **violated** |
+| [`v2/sync_scheduler_truncated.cfg`](v2/sync_scheduler_truncated.cfg) | truncation marks missing | `EventuallyAllVerified` | **violated** (the stall) |
+| [`v2/sync_scheduler_timeout.cfg`](v2/sync_scheduler_timeout.cfg) | timeout marks missing (legacy bug) | `RegistryHonest` | **violated** |
+| [`v2/sync_scheduler_evict.cfg`](v2/sync_scheduler_evict.cfg) | honest registry, no redial | `EventuallyAllVerified` | **violated** (eviction stall) |
+
+```bash
+cd v2
+java -jar ../tla2tools.jar -config sync_scheduler.cfg           sync_scheduler.tla  # passes
+java -jar ../tla2tools.jar -config sync_scheduler_truncated.cfg sync_scheduler.tla  # liveness stall
+```
+
 Safety invariants cover the draft's connection rules (one handshake stream,
 nothing before `init`, negotiated version is the minimum, one announcement
 stream per type, one request per stream after the handshake, response bounds,

@@ -79,3 +79,20 @@ Modeled in Phase 2 (`v2/protocol.cfg`, complete state space):
   only the reset tells it the request is dead. A model that omitted the reset
   hung every subsequent request. A non-normative sentence saying why both
   operations are required might save an implementer the same mistake.
+
+## 5. For the sync draft / ibd-engine rather than the transport ZIP
+
+The Phase 3 scheduler model (`v2/sync_scheduler.tla`) yields two
+requirements any conforming download scheduler must meet, reproducible as
+TLC counterexamples when violated:
+
+- Only the explicit per-entry not-found result may mark a peer as lacking a
+  block. `REFUSED` resets and truncated (early-finished) responses are
+  routine, sanctioned responder behaviour; recording them as not-found
+  stalls synchronization against fully conformant peers. This generalizes
+  the legacy "a timeout is not a notfound" rule (zebra#10679) to the v2
+  outcome set. A sentence in the sync recommendations draft would pin this.
+- An unresponsive-peer disconnection rule (as in Zebra's v2 connection,
+  zebra#11276) is sound for liveness only together with a reconnection
+  policy: evicting the sole holder of a block with no redial stalls the
+  sync even with an honest registry.

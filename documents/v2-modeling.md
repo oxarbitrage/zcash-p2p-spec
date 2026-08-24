@@ -9,7 +9,7 @@ still moving; section names below refer to that revision. The draft's
 not yet been updated for the new protocol — this document describes that
 update, phase by phase.
 
-Phases 1 and 2 are complete; this document describes both. Reference
+Phases 1–3 are complete; this document describes them. Reference
 implementation consulted: Zebra's five-PR draft stack
 [#11273](https://github.com/ZcashFoundation/zebra/pull/11273) –
 [#11277](https://github.com/ZcashFoundation/zebra/pull/11277)
@@ -240,11 +240,77 @@ its request is dead. Zebra refuses requests with `send.reset(Refused)`, the
 half that matters. Worth keeping in mind for any implementation that refuses
 streams before reading them.
 
+## Phase 3 — the v2 download scheduler
+
+`v2/sync_scheduler.tla` is the v2 counterpart of the legacy
+`sync_scheduler.tla`: same altitude (which peer to ask for each block), same
+discipline (the `Holds(p, b)` oracle appears only in invariants), same
+switch-plus-configs structure. Zebra's v2 stack defers this layer to a future
+"ibd-engine" scheduler, so the model is ahead of the implementation — the
+point where findings are cheapest.
+
+### What changes in v2
+
+The legacy scheduler had two uninformative failure outcomes (timeout,
+dropped connection). The v2 protocol has four ways a request ends without a
+block, and only one carries information about the peer's chain:
+
+| Outcome | Draft source | Registry-relevant? |
+|---|---|---|
+| per-entry not-found (`0x02`) | "get-blocks" | **yes** — mark missing |
+| `REFUSED` stream reset | "Request Streams"; routine under Zebra's 2-bulk-stream cap | no |
+| truncation (early FIN after any complete entry) | "get-blocks", "get-block-range" — sanctioned and resumable | no |
+| timeout → `CANCELLED` | "Block Download Parameters" | no |
+
+Each uninformative outcome gets a switch that treats it as informative
+(`TreatRefusedAsMissing`, `TreatTruncatedAsMissing`, `BuggyTimeout` — the
+last is the exact legacy zebra#10679 bug kept as a regression guard). On top
+of that, the scheduler applies Zebra's unresponsive-peer rule
+(zebra#11276): `UnresponsiveLimit` consecutive timeouts with no response of
+any kind disconnects the peer; the `Redial` switch decides whether
+disconnected peers come back. Any response — a block, a not-found, a
+REFUSED, a truncation — resets the consecutive-timeout count, matching
+Zebra's "concurrent timeouts overlapping a response do not count".
+
+### Results
+
+Peer set as in the legacy stall: `p_tip` holds everything, `p_lag` only
+block 1, so block 2 has exactly one holder.
+
+| Config | Behaviour | Result |
+|---|---|---|
+| `sync_scheduler.cfg` | fixed (redial, no poisoning) | 339 states, all invariants + `EventuallyAllVerified` pass |
+| `sync_scheduler_refused.cfg` | REFUSED → missing | `RegistryHonest` violated in 2 steps |
+| `sync_scheduler_truncated.cfg` | truncation → missing | `EventuallyAllVerified` violated: one truncated response from the only holder of block 2 makes it unroutable |
+| `sync_scheduler_timeout.cfg` | timeout → missing | `RegistryHonest` violated in 2 steps (legacy regression guard) |
+| `sync_scheduler_evict.cfg` | honest registry, `Redial = FALSE` | `EventuallyAllVerified` violated: two timeouts evict the only holder, and nothing brings it back |
+
+### What this says to an implementer
+
+1. **The legacy lesson triples in v2.** "A timeout is not a notfound" was
+   one rule in the legacy scheduler; in v2 the same mistake is available
+   three ways, and two of them (`REFUSED`, truncation) are *routine,
+   sanctioned responder behaviour* — Zebra itself refuses beyond 2
+   concurrent bulk streams and truncates responses at byte budgets. A
+   scheduler that penalises routing state on any of them stalls against
+   fully conformant peers, no adversary needed.
+2. **The redial loop is load-bearing for liveness.** The unresponsive-peer
+   eviction rule is fine *only because* disconnected peers are redialled.
+   The eviction stall counterexample has an entirely honest registry — the
+   liveness argument for the ibd-engine has to include the reconnection
+   policy, not just the routing table.
+
+### Fairness note
+
+Strong fairness on `Request`/`DeliverBlock`/`NotFound`/`Reconnect` encodes
+"the node keeps trying, willing peers eventually answer, the redial loop
+keeps running"; the adversarial outcomes carry no fairness, so an infinite
+refusal/truncation/timeout storm is possible but never forced — under it,
+`SF(DeliverBlock)` still forces eventual delivery in the fixed
+configuration, which is exactly the claim that the fixed design has no
+starvation route.
+
 ## Next phases
 
-- **Phase 3** — v2 download scheduler, the part of the draft Zebra has not
-  implemented yet: `REFUSED`, early finish, `CANCELLED` and silent timeout
-  must never be recorded as not-found (the v1 stall bug, zebra#10679, with
-  more ways to not receive a block).
 - **Phase 4** — misbehavior and banning: honest peers on divergent chains
   never ban each other.
