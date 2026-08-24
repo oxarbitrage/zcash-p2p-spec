@@ -195,6 +195,25 @@ forever — while the draft's stated rule (`AtMostOnePerView`) is satisfied the
 whole time. Only an asymmetric tie-break converges. Zebra's v2 draft sidesteps
 the question by not deduplicating at all.
 
+### v2 get-mempool subscription
+
+[`v2/mempool_sub.tla`](v2/mempool_sub.tla) checks the draft's other
+singleton-stream rule: "a second concurrent `get-mempool` subscription is a
+connection error of type `PROTOCOL_ERROR`", against the cancel/re-subscribe
+churn the draft itself anticipates.
+
+| Config | Reading | Checks | Expected |
+|---|---|---|---|
+| [`v2/mempool_tolerant.cfg`](v2/mempool_tolerant.cfg) | newer stream supersedes, stale opens refused | invariants + liveness | passes |
+| [`v2/mempool_strict.cfg`](v2/mempool_strict.cfg) | literal text | `NoHonestProtocolError` | **violated** (re-subscribe race) |
+
+The strict violation is the announcement-stream replacement race recurring in
+a second rule (6-state trace). The tolerant fix carries its own finding: a
+supersede rule must compare the order in which the *peer* opened its streams
+— an unordered "supersede on every open" fails liveness because stream opens
+themselves reorder — and the draft's abstract stream layer does not expose
+stream creation order at all (QUIC stream IDs do).
+
 ### v2 misbehavior and banning
 
 [`v2/misbehavior.tla`](v2/misbehavior.tla) models the draft's "Misbehavior and

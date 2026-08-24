@@ -9,8 +9,8 @@ still moving; section names below refer to that revision. The draft's
 not yet been updated for the new protocol — this document describes that
 update, phase by phase.
 
-All four phases plus the simultaneous-dial addendum are complete; this
-document describes them. Reference
+All four phases plus the simultaneous-dial and get-mempool addenda are
+complete; this document describes them. Reference
 implementation consulted: Zebra's five-PR draft stack
 [#11273](https://github.com/ZcashFoundation/zebra/pull/11273) –
 [#11277](https://github.com/ZcashFoundation/zebra/pull/11277)
@@ -406,3 +406,41 @@ discharged by the redial cycle while a specific connection's accept starves.
 Fairness is therefore per connection (each specific open, close notice and
 settle is eventually processed), and the flap counterexamples contain every
 fair action infinitely often.
+
+## Addendum — get-mempool re-subscription (Finding 1 again, and Finding 4)
+
+`v2/mempool_sub.tla` models the draft's other singleton-stream rule
+("get-mempool": "A node MUST NOT open more than one concurrent `get-mempool`
+stream to the same peer; a second concurrent subscription is a connection
+error of type `PROTOCOL_ERROR`") against the cancel/re-subscribe churn the
+draft itself anticipates (it recommends rate-limiting it).
+
+**The race (Finding 1's class, second instance).** The requester cancels its
+subscription with `CANCELLED` and opens a new `get-mempool` stream; the two
+signals travel on different streams, so the responder can observe the new
+stream's type byte first. Under the literal text it closes the connection —
+against a requester that never had two subscriptions open from its own point
+of view. `mempool_strict.cfg` violates `NoHonestProtocolError` in six
+states. Zebra's draft implements the strict check
+(`mempool_subscribed.swap(true)` → `fail_protocol`) and its conformance
+notes lean on "prompt cancel detection" — timing, which the transport does
+not guarantee. Two rules of the draft now fail the same way for the same
+reason; the fix should be shared.
+
+**Finding 4 — the fix needs stream creation order, which the abstract
+stream layer does not provide.** The first tolerant rule tried —
+"a newly observed subscription supersedes the one being served" — failed
+`EventuallySubscribed`: stream *opens* also reorder, so the stale open of an
+already-cancelled subscription can arrive after the live subscription's open
+and would supersede it, leaving the requester unsubscribed with no error on
+either side. The rule that verifies (`mempool_tolerant.cfg`, 115 states,
+complete) is: *a subscription stream supersedes the one being served only if
+the peer opened it later; an older stream is refused without penalty.* That
+requires the receiver to know the order in which the peer opened its
+streams. QUIC provides it (stream IDs are monotone per opener), but the
+draft's "Transport Requirements" abstraction only says the receiver "can
+tell which peer opened it and of which kind it is" — creation order is not
+part of the abstract stream layer, so the working rule cannot be written
+against the abstraction, only against QUIC directly. Any transport realizing
+the stream layer (the Tor framing included) must guarantee
+monotonically-ordered stream identifiers for the fix to be portable.

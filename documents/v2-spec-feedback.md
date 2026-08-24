@@ -144,3 +144,41 @@ one idles out") so that implementations that do deduplicate cannot flap
 against ones that do not. Also worth clarifying whether "remote address"
 means the IP or the (IP, port) pair, since inbound connections arrive from
 ephemeral ports.
+
+## 8. "get-mempool": the singleton rule races like item 1, and the fix
+## needs stream creation order
+
+**Text.** "A node MUST NOT open more than one concurrent `get-mempool`
+stream to the same peer; a second concurrent subscription is a connection
+error of type `PROTOCOL_ERROR`."
+
+**Problem A — the same race as item 1.** A requester that cancels its
+subscription with `CANCELLED` and re-subscribes (churn the section itself
+anticipates and answers with a rate-limit recommendation) can have the new
+stream's type byte observed before the old stream's cancel: the responder
+then sees "a second concurrent subscription" from a conformant peer and
+disconnects it. TLC reproduces it in six states
+(`v2/mempool_strict.cfg`). This is the second rule in the draft with this
+shape (item 1 is the first); a shared fix is warranted.
+
+**Problem B — the natural fix is not implementable against the abstract
+stream layer.** The obvious repair — treat the newer subscription stream as
+superseding the served one, and refuse a stale older one without penalty —
+requires the receiver to order the peer's streams by creation. An
+order-blind supersede rule verifiably fails: stream opens also reorder, so
+a stale open can supersede the live subscription and leave the requester
+silently unsubscribed (found as a TLC liveness violation). QUIC exposes the
+needed order (stream IDs are monotone per opener), but "Transport
+Requirements" only guarantees that the receiver can tell *who* opened a
+stream and *of which kind it is* — not *in what order*. Suggested changes:
+
+> In "Transport Requirements", add: "The receiver of a stream can tell the
+> order in which its peer opened its streams." (QUIC: by stream ID; any
+> other transport realizing the stream layer must provide the same.)
+>
+> In "get-mempool" (and analogously for announcement streams, item 1):
+> "A node observing a new `get-mempool` stream while serving an earlier one
+> from the same peer MUST treat the stream the peer opened later as the
+> live subscription: it SHOULD reset the superseded stream, MUST refuse a
+> stream older than one it is already serving with `CANCELLED` and no
+> penalty, and MUST NOT treat either case as a connection error."
