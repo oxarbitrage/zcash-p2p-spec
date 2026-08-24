@@ -193,3 +193,30 @@ interleaving produces a close without a genuine violation. All hold. The
 negative control shows the forward-compatibility MUST NOT ("Stream Types")
 is load-bearing: a receiver that closes on unknown stream types would
 disconnect the first peer to deploy a future stream type. No change needed.
+
+## 10. "Relay Protocol": the reconstruction fallback should be a MUST
+
+**Text.** "…the node SHOULD fall back to requesting the full block via
+`get-blocks`, and MUST NOT assign a misbehavior penalty solely because
+reconstruction failed."
+
+**Problem.** Two sanctioned behaviours can permanently invalidate a
+requester's SHORTID view of a block: the sender re-announces it with a
+fresh nonce (SHORTID references are interpreted under "the nonce of the
+compact block most recently sent"), and the fresher announcement is dropped
+as best-effort while the requester is mid-attempt. From then on every
+SHORTID reference the requester can produce answers not-found. TLC
+(`v2/compact_nofallback.cfg`) shows a requester that exercises the SHOULD's
+latitude — retrying the compact path instead of falling back — never
+obtains the block from a fully conformant sender: the fallback is the only
+guaranteed delivery path, i.e. a SHOULD doing a MUST's job. Suggest:
+
+> …the node MUST obtain the block by other means, normally a `get-blocks`
+> request, and MUST NOT assign a misbehavior penalty solely because
+> reconstruction failed.
+
+Related: re-announcing a block on a replacement announcement stream (item
+2) increases nonce churn, so items 2 and 10 should land together. The
+penalty MUST NOT is confirmed as written (`v2/compact_penalize.cfg`), and
+the draft's consensus claim for short-ID collisions is machine-checked
+(`WrongTxNeverAccepted`).

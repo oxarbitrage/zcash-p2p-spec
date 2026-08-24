@@ -232,6 +232,31 @@ jobs:
           echo "OK: re-subscribe race reproduced as expected"
         fi
 
+    - name: Compact block reconstruction with fallback must verify
+      working-directory: v2
+      run: |
+        timeout 120 java -jar ../tla2tools.jar -config compact.cfg compact_relay.tla
+
+    - name: Compact path without fallback must stall on a lost re-announcement
+      working-directory: v2
+      run: |
+        if timeout 120 java -jar ../tla2tools.jar -config compact_nofallback.cfg compact_relay.tla; then
+          echo "ERROR: expected EventuallyHasBlock to be violated, but TLC found no error"
+          exit 1
+        else
+          echo "OK: stale-nonce stall reproduced as expected"
+        fi
+
+    - name: Penalizing reconstruction failure must frame an honest sender
+      working-directory: v2
+      run: |
+        if timeout 120 java -jar ../tla2tools.jar -config compact_penalize.cfg compact_relay.tla; then
+          echo "ERROR: expected NoHonestPenalty to be violated, but TLC found no error"
+          exit 1
+        else
+          echo "OK: honest nonce churn penalty reproduced as expected"
+        fi
+
     - name: Misbehavior fixed behaviour must verify
       working-directory: v2
       run: |

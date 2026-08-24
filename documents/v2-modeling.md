@@ -9,8 +9,8 @@ still moving; section names below refer to that revision. The draft's
 not yet been updated for the new protocol — this document describes that
 update, phase by phase.
 
-All four phases plus the simultaneous-dial, get-mempool and Byzantine
-addenda are complete; this document describes them. Reference
+All four phases plus the simultaneous-dial, get-mempool, Byzantine and
+compact-block addenda are complete; this document describes them. Reference
 implementation consulted: Zebra's five-PR draft stack
 [#11273](https://github.com/ZcashFoundation/zebra/pull/11273) –
 [#11277](https://github.com/ZcashFoundation/zebra/pull/11277)
@@ -481,3 +481,40 @@ Verdict: the connection-layer receiver rules are consistent as written —
 the model found no way for the adversary to induce an unaccountable close
 or to escape punishment for a provable violation. This is a confirmation,
 not a finding.
+
+## Addendum — compact block relay (Finding 5)
+
+`v2/compact_relay.tla` models compact block reconstruction between a sender
+and a requester: announcements carry per-announcement nonces, the
+requester's unmatched transactions are fetched by SHORTID reference, and
+the responder interprets those references "using the nonce of the compact
+block it most recently sent to the requesting peer for the identified
+block" ("Requesting Missing Transactions"). Two sanctioned behaviours make
+that interpretation go stale:
+
+1. a sender may announce the same block again with a fresh nonce (for
+   example when re-announcing on a replacement announcement stream — the
+   very behaviour recommended in item 2 of the feedback);
+2. announcements are best-effort, so the re-announcement can be lost while
+   the requester is mid-attempt.
+
+After that, every SHORTID reference the requester can ever produce is
+stale: each resolves to not-found or, by 48-bit collision, a wrong
+transaction (the model resolves the choice adversarially).
+
+| Config | Behaviour | Result |
+|---|---|---|
+| `compact.cfg` | SHOULD-fallback honoured, MUST-NOT-penalize honoured | 64 states; `EventuallyHasBlock`, `NoHonestPenalty`, `WrongTxNeverAccepted` all hold |
+| `compact_nofallback.cfg` | retry the compact path instead of falling back | `EventuallyHasBlock` violated in 7 states: announce, attempt under nonce 1, re-announcement dropped mid-attempt, stale serve fails, nothing left to retry |
+| `compact_penalize.cfg` | penalize reconstruction failure | `NoHonestPenalty` violated in 6 states: honest nonce churn frames the sender |
+
+**Finding 5 — the fallback SHOULD does a MUST's job.** Once the requester's
+SHORTID view is stale and the fresher announcement is lost, no rule of the
+draft other than "the node SHOULD fall back to requesting the full block
+via get-blocks" delivers the block; an implementation exercising the
+latitude of that SHOULD (for example by retrying the compact path, hoping
+for a fresher announcement) stalls against a fully conformant sender. The
+penalty MUST NOT, by contrast, is confirmed load-bearing exactly as
+written. `WrongTxNeverAccepted` also machine-checks the draft's own
+consensus claim: a wrongly matched transaction dies at the merkle check and
+never reaches an accepted block.

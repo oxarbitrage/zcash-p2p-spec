@@ -214,6 +214,25 @@ supersede rule must compare the order in which the *peer* opened its streams
 themselves reorder — and the draft's abstract stream layer does not expose
 stream creation order at all (QUIC stream IDs do).
 
+### v2 compact block relay
+
+[`v2/compact_relay.tla`](v2/compact_relay.tla) models compact block
+reconstruction: per-announcement nonces, SHORTID matching, `get-tx` requests
+for missing transactions — with the draft's rule that SHORTID references are
+interpreted "using the nonce of the compact block most recently sent", and
+announcements being best-effort (a re-announcement can be lost mid-attempt).
+
+| Config | Behaviour | Checks | Expected |
+|---|---|---|---|
+| [`v2/compact.cfg`](v2/compact.cfg) | falls back to `get-blocks`, no penalty | invariants + liveness | passes |
+| [`v2/compact_nofallback.cfg`](v2/compact_nofallback.cfg) | retries the compact path instead | `EventuallyHasBlock` | **violated** (stale-nonce stall) |
+| [`v2/compact_penalize.cfg`](v2/compact_penalize.cfg) | penalizes reconstruction failure | `NoHonestPenalty` | **violated** |
+
+The stall shows the draft's "SHOULD fall back to requesting the full block"
+is the only guaranteed delivery path once a peer's SHORTID view goes stale —
+a SHOULD doing a MUST's job. `WrongTxNeverAccepted` confirms the draft's
+claim that short-ID collisions cannot weaken consensus.
+
 ### v2 misbehavior and banning
 
 [`v2/misbehavior.tla`](v2/misbehavior.tla) models the draft's "Misbehavior and
