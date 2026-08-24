@@ -175,6 +175,23 @@ java -jar ../tla2tools.jar -config sync_scheduler.cfg           sync_scheduler.t
 java -jar ../tla2tools.jar -config sync_scheduler_truncated.cfg sync_scheduler.tla  # liveness stall
 ```
 
+### v2 misbehavior and banning
+
+[`v2/misbehavior.tla`](v2/misbehavior.tla) models the draft's "Misbehavior and
+Banning" section as checkable properties. Honest peers may legitimately send
+headers that do not connect to the local chain (they follow another fork) and
+may serve a requested-by-hash block whose content is consensus-invalid (the
+bytes the hash names; blame lies with the announcer) — the draft's
+provability principle forbids penalizing either. Byzantine peers send the
+penalty table's provable violations. Switches select the wrong readings.
+
+| Config | Behaviour | Checks | Expected |
+|---|---|---|---|
+| [`v2/misbehavior.cfg`](v2/misbehavior.cfg) | fixed (provable-only, address-keyed) | `NoHonestBan`, `BanIsFinal` + `PersistentAttackerBanned` | passes |
+| [`v2/misbehavior_nonconnecting.cfg`](v2/misbehavior_nonconnecting.cfg) | penalize non-connecting headers | `NoHonestBan` | **violated** (honest fork-follower banned) |
+| [`v2/misbehavior_requested.cfg`](v2/misbehavior_requested.cfg) | penalize requested invalid blocks | `NoHonestBan` | **violated** (one served artifact) |
+| [`v2/misbehavior_perconn.cfg`](v2/misbehavior_perconn.cfg) | per-connection scores | `PersistentAttackerBanned` | **violated** (reconnect sheds the score) |
+
 Safety invariants cover the draft's connection rules (one handshake stream,
 nothing before `init`, negotiated version is the minimum, one announcement
 stream per type, one request per stream after the handshake, response bounds,

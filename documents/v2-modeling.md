@@ -9,7 +9,7 @@ still moving; section names below refer to that revision. The draft's
 not yet been updated for the new protocol — this document describes that
 update, phase by phase.
 
-Phases 1–3 are complete; this document describes them. Reference
+All four phases are complete; this document describes them. Reference
 implementation consulted: Zebra's five-PR draft stack
 [#11273](https://github.com/ZcashFoundation/zebra/pull/11273) –
 [#11277](https://github.com/ZcashFoundation/zebra/pull/11277)
@@ -310,7 +310,52 @@ refusal/truncation/timeout storm is possible but never forced — under it,
 configuration, which is exactly the claim that the fixed design has no
 starvation route.
 
-## Next phases
+## Phase 4 — misbehavior and banning
 
-- **Phase 4** — misbehavior and banning: honest peers on divergent chains
-  never ban each other.
+`v2/misbehavior.tla` turns the draft's "Misbehavior and Banning" section —
+particularly its provability principle and its rationale ("penalties
+assigned on weaker evidence are worse than none: they let an attacker …
+induce honest nodes to ban one another") — into checkable properties, in the
+scheduler module's style: a local node scores its remote peers, and switch
+constants select wrong readings of the draft.
+
+### The abstraction
+
+Honest peers may legitimately emit two things a naive receiver is tempted to
+punish:
+
+- **divergent headers** — contiguous, valid proof of work, but not
+  connecting to the local chain: the peer follows another fork. The draft
+  says MUST NOT penalize ("Block Announcements", "Headers-First
+  Synchronization").
+- **requested invalid blocks** — a block the local node itself requested by
+  hash whose content fails consensus validation: the responder served
+  exactly the bytes the hash names (e.g. a checkpointed-sync artifact); the
+  exemption "Content of requested objects" applies, blame lies with the
+  announcer.
+
+Byzantine peers emit the penalty table's provable violations: oversize
+get-headers responses (+20), non-contiguous headers (+20), invalid
+proof-of-work blocks (+100). Peers may disconnect at will and reconnect
+unless banned; whether the score survives a reconnect is the
+`PerConnectionScore` switch (the draft wants scores keyed by address for
+exactly this reason). Fairness encodes the liveness hypothesis: the
+Byzantine peer *keeps* misbehaving and keeps reconnecting — on its own
+reconnection specifically, so an honest peer's reconnections cannot
+discharge it.
+
+### Results
+
+| Config | Behaviour | Result |
+|---|---|---|
+| `misbehavior.cfg` | provable-only penalties, address-keyed scores | 22 states; `NoHonestBan`, `BanIsFinal`, `PersistentAttackerBanned` all hold |
+| `misbehavior_nonconnecting.cfg` | +20 for non-connecting headers | `NoHonestBan` violated: an honest fork-follower is banned after five divergent responses |
+| `misbehavior_requested.cfg` | +100 for a requested invalid block | `NoHonestBan` violated in one step |
+| `misbehavior_perconn.cfg` | per-connection score | `PersistentAttackerBanned` violated: emit 20+20, disconnect, reconnect clean, repeat forever |
+
+The two `NoHonestBan` violations are the draft's warning made concrete: both
+buggy readings are natural implementation shortcuts (legacy zcashd punished
+non-connecting headers in some paths), and either one lets chain divergence
+— which an attacker can manufacture — turn honest peers into banned peers.
+The `perconn` violation is the draft's argument for address-keyed persistent
+scores, reproduced as a five-state loop.

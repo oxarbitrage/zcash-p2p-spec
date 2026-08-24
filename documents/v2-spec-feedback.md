@@ -96,3 +96,19 @@ TLC counterexamples when violated:
   zebra#11276) is sound for liveness only together with a reconnection
   policy: evicting the sole holder of a block with no redial stalls the
   sync even with an honest registry.
+
+## 6. Confirmed: the misbehavior section's rules are load-bearing
+
+The Phase 4 model (`v2/misbehavior.tla`) confirms three of the draft's
+misbehavior rules by violating them:
+
+- Penalizing non-connecting headers — forbidden by the draft, but a natural
+  shortcut — bans an honest peer on another fork after five responses.
+- Penalizing consensus invalidity of a block the node itself requested by
+  hash — against the "Content of requested objects" exemption — bans an
+  honest peer in one step.
+- Per-connection scores instead of address-keyed persistent scores let a
+  persistent attacker shed its score by reconnecting below the threshold,
+  forever.
+
+No draft change needed; these support the text as written.
