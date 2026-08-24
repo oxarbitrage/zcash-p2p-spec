@@ -30,6 +30,16 @@ Two boolean constants select how a receiver interprets the draft:
                                REFUSED ("Connection Handshake": MAY refuse)
                          FALSE they are buffered until it completes
 
+Peers in ByzantinePeers complete an honest handshake and may then commit
+wire-level mischief: a second init record, a stream of unknown type, a
+record of unknown kind on the handshake stream, and a stream finished
+before its type byte. The receiver's obligations differ per the draft: the
+first and last are connection errors, the middle two MUST be tolerated
+(forward compatibility). Ghost flags record genuine violations so that
+CloseAccountable can check no honest receiver ever fires PROTOCOL_ERROR
+without one, and EventuallyPunished that every violation ends the
+connection.
+
 Under StrictSingleton the invariant NoHonestProtocolError is violated: two
 conformant peers disconnect because stream independence lets a replacement
 stream's type byte arrive before the old stream's FIN or reset.
@@ -48,6 +58,9 @@ CONSTANT MinVersion          \* minimum protocol version of the draft (not yet a
 CONSTANT Versions            \* protocol versions a peer may advertise
 CONSTANT StrictSingleton     \* see module comment
 CONSTANT RefusePreHandshake  \* see module comment
+CONSTANT ByzantinePeers      \* peers that may misbehave after an honest handshake
+CONSTANT MaxMischief         \* Byzantine actions available per peer pair
+CONSTANT PunishUnknownType   \* TRUE closes on unknown stream types (buggy)
 
 VARIABLE nodes
 
@@ -78,6 +91,8 @@ Init ==
             restarts   |-> [ j \in OtherPeers[i] |-> 0 ],
             want       |-> [ j \in OtherPeers[i] |-> <<>> ],
             score      |-> [ j \in OtherPeers[i] |-> 0 ],
+            mischief   |-> [ j \in OtherPeers[i] |-> 0 ],
+            violated   |-> [ j \in OtherPeers[i] |-> FALSE ],
             blocks     |-> 1..blockset[i],
             my_version |-> verset[i]
         ]]
@@ -218,24 +233,37 @@ RecvTypeByte ==
                                     /\ S(n, m, o).status = "open"
                                     /\ S(n, m, o).rtype = t
                    IN
-                   /\ t \in StreamTypes
-                   /\ \/ /\ t = HandshakeType
-                         /\ \/ /\ legalHs
-                               /\ nodes' = accept
-                            \/ /\ ~legalHs
-                               /\ nodes' = Close(nodes, n, m, "PROTOCOL_ERROR")
-                      \/ /\ t \in AnnTypes \cup RequestTypes
-                         /\ \/ /\ ~HandshakeComplete(n, m)
-                               /\ RefusePreHandshake
-                               /\ nodes' = Settle([ nodes EXCEPT
-                                        ![n].streams[m][sid] = ClosedStream,
-                                        ![m].streams[n][sid] = Refuse(@, t, "REFUSED") ],
-                                      n, m, sid)
-                            \/ /\ HandshakeComplete(n, m)
-                               /\ \/ /\ t \in AnnTypes /\ StrictSingleton /\ dup
-                                     /\ nodes' = Close(nodes, n, m, "PROTOCOL_ERROR")
-                                  \/ /\ ~(t \in AnnTypes /\ StrictSingleton /\ dup)
-                                     /\ nodes' = accept
+                   \/ /\ t \notin StreamTypes
+                      \* Unknown stream type: refuse with
+                      \* UNSUPPORTED_STREAM_TYPE; the draft says MUST NOT
+                      \* close or penalize — new stream types deploy
+                      \* without version gating. PunishUnknownType is the
+                      \* forbidden reading.
+                      /\ \/ /\ PunishUnknownType
+                            /\ nodes' = Close(nodes, n, m, "PROTOCOL_ERROR")
+                         \/ /\ ~PunishUnknownType
+                            /\ nodes' = Settle([ nodes EXCEPT
+                                     ![n].streams[m][sid] = ClosedStream,
+                                     ![m].streams[n][sid] = Refuse(@, t, "UNSUPPORTED_STREAM_TYPE") ],
+                                   n, m, sid)
+                   \/ /\ t \in StreamTypes
+                      /\ \/ /\ t = HandshakeType
+                            /\ \/ /\ legalHs
+                                  /\ nodes' = accept
+                               \/ /\ ~legalHs
+                                  /\ nodes' = Close(nodes, n, m, "PROTOCOL_ERROR")
+                         \/ /\ t \in AnnTypes \cup RequestTypes
+                            /\ \/ /\ ~HandshakeComplete(n, m)
+                                  /\ RefusePreHandshake
+                                  /\ nodes' = Settle([ nodes EXCEPT
+                                           ![n].streams[m][sid] = ClosedStream,
+                                           ![m].streams[n][sid] = Refuse(@, t, "REFUSED") ],
+                                         n, m, sid)
+                               \/ /\ HandshakeComplete(n, m)
+                                  /\ \/ /\ t \in AnnTypes /\ StrictSingleton /\ dup
+                                        /\ nodes' = Close(nodes, n, m, "PROTOCOL_ERROR")
+                                     \/ /\ ~(t \in AnnTypes /\ StrictSingleton /\ dup)
+                                        /\ nodes' = accept
 
 \* n consumes m's init record from the handshake stream (draft: "Handshake
 \* Validation"):
@@ -265,6 +293,101 @@ RecvInit ==
                               ![n].init_recvd[m]       = TRUE,
                               ![n].version[m]          = Min(nodes[n].my_version, msg.version),
                               ![n].peer_tip[m]         = msg.start_height ]
+
+\* n ignores a record of unknown kind on the handshake stream: "a node MUST
+\* ignore handshake-stream records whose kind it does not recognize"
+\* (draft: "Connection Handshake").
+RecvUnknownHandshakeRecord ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            \E sid \in HandshakeStreams(n, m):
+                LET s == S(n, m, sid)
+                IN
+                /\ Connected(n, m)
+                /\ Len(s.inq) > 0
+                /\ s.inq[1].kind \notin { "init", "type", "fin" }
+                /\ nodes' = [ nodes EXCEPT ![n].streams[m][sid].inq = Tail(@) ]
+
+----
+
+\* --- Byzantine actions ---
+\* A Byzantine peer completes an honest handshake and then misbehaves at
+\* the wire level, within a MaxMischief budget. Ghost bookkeeping: the
+\* HONEST side's `violated` flag records genuine violations (the first and
+\* last are; the tolerated two are not), so accountability is checkable.
+
+ByzCan(n, m) ==
+    /\ n \in ByzantinePeers
+    /\ Connected(n, m)
+    /\ HandshakeComplete(n, m)
+    /\ nodes[n].mischief[m] < MaxMischief
+
+\* A second init record on the handshake stream — a violation the receiver
+\* MUST answer with PROTOCOL_ERROR (draft: "Handshake Validation").
+ByzSecondInit ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            \E sid \in HandshakeStreams(n, m):
+                /\ ByzCan(n, m)
+                /\ nodes' = [ nodes EXCEPT
+                        ![m].streams[n][sid] = PutData(@, MakeInit(nodes[n].my_version, Height(n))),
+                        ![n].mischief[m]     = @ + 1,
+                        ![m].violated[n]     = TRUE ]
+
+\* A record of unknown kind on the handshake stream — NOT a violation:
+\* future revisions may define new kinds and the receiver MUST ignore them.
+ByzUnknownHandshakeRecord ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            \E sid \in HandshakeStreams(n, m):
+                /\ ByzCan(n, m)
+                /\ nodes' = [ nodes EXCEPT
+                        ![m].streams[n][sid] = PutData(@, [ kind |-> "junk" ]),
+                        ![n].mischief[m]     = @ + 1 ]
+
+\* A stream of a type the receiver does not recognize — NOT a violation:
+\* the receiver refuses it with UNSUPPORTED_STREAM_TYPE and moves on
+\* (draft: "Stream Types").
+ByzUnknownStreamType ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            /\ ByzCan(n, m)
+            /\ FreeSlots(n, m) # {}
+            /\ LET sid == << n, FreeSlot(n, m) >>
+               IN nodes' = [ nodes EXCEPT
+                    ![n].streams[m][sid] = ClosedStream,
+                    ![m].streams[n][sid] = PeerStream("0xEE", <<>>),
+                    ![n].mischief[m]     = @ + 1 ]
+
+\* A handshake stream opened by a peer that already has one (or is the
+\* responder) — a violation the receiver MUST answer with PROTOCOL_ERROR
+\* (draft: "Connection Handshake").
+ByzSecondHandshakeStream ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            /\ ByzCan(n, m)
+            /\ FreeSlots(n, m) # {}
+            /\ LET sid == << n, FreeSlot(n, m) >>
+               IN nodes' = [ nodes EXCEPT
+                    ![n].streams[m][sid] = ClosedStream,
+                    ![m].streams[n][sid] = PeerStream(HandshakeType, <<>>),
+                    ![n].mischief[m]     = @ + 1,
+                    ![m].violated[n]     = TRUE ]
+
+\* A stream finished before a complete type byte — a violation the receiver
+\* MUST answer with PROTOCOL_ERROR (draft: "Stream Types").
+ByzEarlyFin ==
+    \E n \in InitialPeers:
+        \E m \in OtherPeers[n]:
+            /\ ByzCan(n, m)
+            /\ FreeSlots(n, m) # {}
+            /\ LET sid == << n, FreeSlot(n, m) >>
+               IN nodes' = [ nodes EXCEPT
+                    ![n].streams[m][sid] = ClosedStream,
+                    ![m].streams[n][sid] = [ NullStream EXCEPT !.status = "open",
+                                                               !.inq = << FIN >> ],
+                    ![n].mischief[m]     = @ + 1,
+                    ![m].violated[n]     = TRUE ]
 
 ----
 
@@ -561,6 +684,12 @@ Next ==
     \/ SendInitResponder
     \/ RecvTypeByte
     \/ RecvInit
+    \/ RecvUnknownHandshakeRecord
+    \/ ByzSecondInit
+    \/ ByzUnknownHandshakeRecord
+    \/ ByzUnknownStreamType
+    \/ ByzSecondHandshakeStream
+    \/ ByzEarlyFin
     \/ OpenAnnouncementStream
     \/ SendAnnouncement
     \/ RecvAnnouncement
@@ -618,6 +747,7 @@ TypeOK ==
         /\ nodes[n].version[m] \in Versions \cup { 0 }
         /\ nodes[n].restarts[m] \in 0..MaxRestarts
         /\ nodes[n].score[m] \in Nat
+        /\ nodes[n].mischief[m] \in 0..MaxMischief
         /\ \A sid \in StreamIds(n, m) :
             /\ S(n, m, sid).status \in { "none", "open", "closed" }
             /\ S(n, m, sid).rtype \in StreamTypes \cup { "unknown" }
@@ -691,11 +821,24 @@ ResponsesBounded ==
 NoHonestPenalty ==
     \A n \in InitialPeers : \A m \in OtherPeers[n] : nodes[n].score[m] = 0
 
-\* No interleaving of conformant behaviour ends in a protocol error. There are
-\* no adversarial actions in this phase, so any close other than OBSOLETE is a
-\* disagreement between honest peers about the draft's rules.
+\* No interleaving of conformant behaviour ends in a protocol error. Checked
+\* in configurations with no Byzantine peers, where any close other than
+\* OBSOLETE is a disagreement between honest peers about the draft's rules.
 NoHonestProtocolError ==
     \A n \in InitialPeers : \A m \in OtherPeers[n] :
         nodes[n].close[m] \in { NoCode, "OBSOLETE" }
+
+\* Accountability: an honest receiver fires PROTOCOL_ERROR only after a
+\* genuine violation by the peer. Tolerated mischief (unknown stream types,
+\* unknown handshake records) never sets the ghost flag, so a receiver that
+\* punished it would violate this invariant.
+CloseAccountable ==
+    \A n \in InitialPeers \ ByzantinePeers : \A m \in OtherPeers[n] :
+        nodes[n].close[m] = "PROTOCOL_ERROR" => nodes[n].violated[m]
+
+\* Every genuine violation eventually ends the connection.
+EventuallyPunished ==
+    \A n \in InitialPeers : \A m \in OtherPeers[n] :
+        [] (nodes[n].violated[m] => <> (nodes[n].conn[m] = "closed"))
 
 ====

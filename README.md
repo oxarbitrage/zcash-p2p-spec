@@ -231,6 +231,27 @@ penalty table's provable violations. Switches select the wrong readings.
 | [`v2/misbehavior_requested.cfg`](v2/misbehavior_requested.cfg) | penalize requested invalid blocks | `NoHonestBan` | **violated** (one served artifact) |
 | [`v2/misbehavior_perconn.cfg`](v2/misbehavior_perconn.cfg) | per-connection scores | `PersistentAttackerBanned` | **violated** (reconnect sheds the score) |
 
+### v2 Byzantine receiver obligations
+
+`protocol.tla` also hosts a wire-level adversary: peers in `ByzantinePeers`
+complete an honest handshake and then, within a mischief budget, send second
+`init` records and streams finished before their type byte (genuine
+violations), plus unknown stream types and unknown handshake-stream records
+(which the draft says MUST be tolerated for forward compatibility). Ghost
+flags record genuine violations.
+
+| Config | Behaviour | Checks | Expected |
+|---|---|---|---|
+| [`v2/protocol_byzantine.cfg`](v2/protocol_byzantine.cfg) | conformant receiver | `CloseAccountable` + `EventuallyPunished` | passes |
+| [`v2/protocol_punish_unknown.cfg`](v2/protocol_punish_unknown.cfg) | closes on unknown stream types | `CloseAccountable` | **violated** |
+
+`CloseAccountable`: an honest receiver fires `PROTOCOL_ERROR` only after a
+genuine violation — so tolerated mischief can never kill the connection.
+`EventuallyPunished`: every genuine violation ends the connection. The
+negative config shows the draft's "MUST NOT treat an unknown stream type as
+a connection error" is load-bearing: without it, the first peer to deploy a
+future stream type gets disconnected by every current node.
+
 Safety invariants cover the draft's connection rules (one handshake stream,
 nothing before `init`, negotiated version is the minimum, one announcement
 stream per type, one request per stream after the handshake, response bounds,

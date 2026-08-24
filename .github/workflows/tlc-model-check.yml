@@ -137,6 +137,21 @@ jobs:
           echo "OK: replacement race reproduced as expected"
         fi
 
+    - name: Byzantine mischief must be punished, tolerated mischief must not
+      working-directory: v2
+      run: |
+        timeout 600 java -jar ../tla2tools.jar -workers auto -config protocol_byzantine.cfg protocol.tla
+
+    - name: Punishing unknown stream types must break accountability
+      working-directory: v2
+      run: |
+        if timeout 300 java -jar ../tla2tools.jar -workers auto -config protocol_punish_unknown.cfg protocol.tla; then
+          echo "ERROR: expected CloseAccountable to be violated, but TLC found no error"
+          exit 1
+        else
+          echo "OK: forward-compatibility close reproduced as expected"
+        fi
+
     - name: 3 peers with symmetry (bounded)
       working-directory: v2
       run: |

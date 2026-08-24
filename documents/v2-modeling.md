@@ -9,8 +9,8 @@ still moving; section names below refer to that revision. The draft's
 not yet been updated for the new protocol — this document describes that
 update, phase by phase.
 
-All four phases plus the simultaneous-dial and get-mempool addenda are
-complete; this document describes them. Reference
+All four phases plus the simultaneous-dial, get-mempool and Byzantine
+addenda are complete; this document describes them. Reference
 implementation consulted: Zebra's five-PR draft stack
 [#11273](https://github.com/ZcashFoundation/zebra/pull/11273) –
 [#11277](https://github.com/ZcashFoundation/zebra/pull/11277)
@@ -444,3 +444,40 @@ part of the abstract stream layer, so the working rule cannot be written
 against the abstraction, only against QUIC directly. Any transport realizing
 the stream layer (the Tor framing included) must guarantee
 monotonically-ordered stream identifiers for the fix to be portable.
+
+## Addendum — Byzantine receiver obligations
+
+The phase models check honest interleavings; this addendum adds a
+wire-level adversary to `protocol.tla` to check the *receiver's*
+obligations. A Byzantine peer completes an honest handshake and then, within
+a `MaxMischief` budget, commits four kinds of mischief with opposite
+required outcomes:
+
+| Mischief | Draft's required handling | Ghost flag |
+|---|---|---|
+| second `init` record | connection error `PROTOCOL_ERROR` ("Handshake Validation") | violation |
+| stream finished before its type byte | connection error `PROTOCOL_ERROR` ("Stream Types") | violation |
+| second handshake stream | connection error `PROTOCOL_ERROR` ("Connection Handshake") | violation |
+| unknown stream type | refuse with `UNSUPPORTED_STREAM_TYPE`, MUST NOT close or penalize | none |
+| unknown handshake-stream record kind | MUST ignore | none |
+
+Two properties tie them together: `CloseAccountable` — an honest receiver
+fires `PROTOCOL_ERROR` only when the ghost flag is set, i.e. never for
+tolerated mischief and never spuriously under any interleaving — and
+`EventuallyPunished` — every genuine violation eventually ends the
+connection. Both hold (`protocol_byzantine.cfg`, 4,295 states, complete;
+TLC coverage confirms every mischief action and both punishment branches
+fire). All honest-configuration invariants also still hold with the
+adversary present, and the full honest regression is unchanged to the
+state count.
+
+The negative control `protocol_punish_unknown.cfg` flips the one forbidden
+reading (`PunishUnknownType`): treating an unknown stream type as a
+connection error breaks `CloseAccountable` in eight states. That MUST NOT
+is what lets future stream types deploy without version gating — a receiver
+that violates it disconnects the first peer to deploy one.
+
+Verdict: the connection-layer receiver rules are consistent as written —
+the model found no way for the adversary to induce an unaccountable close
+or to escape punishment for a provable violation. This is a confirmation,
+not a finding.

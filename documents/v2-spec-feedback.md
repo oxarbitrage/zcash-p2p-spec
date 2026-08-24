@@ -182,3 +182,14 @@ stream and *of which kind it is* — not *in what order*. Suggested changes:
 > live subscription: it SHOULD reset the superseded stream, MUST refuse a
 > stream older than one it is already serving with `CANCELLED` and no
 > penalty, and MUST NOT treat either case as a connection error."
+
+## 9. Confirmed: the connection-layer receiver obligations are consistent
+
+A wire-level adversary model (`v2/protocol_byzantine.cfg`) checked the
+receiver rules jointly: second `init` records, premature FINs and second
+handshake streams are always punished with `PROTOCOL_ERROR`; unknown stream
+types and unknown handshake-record kinds are always tolerated; and no
+interleaving produces a close without a genuine violation. All hold. The
+negative control shows the forward-compatibility MUST NOT ("Stream Types")
+is load-bearing: a receiver that closes on unknown stream types would
+disconnect the first peer to deploy a future stream type. No change needed.
