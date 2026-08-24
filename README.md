@@ -277,6 +277,27 @@ as *cumulative* — the two readings disagree in both directions. One
 confirmation: `StrictSingletonSafeHere` — the announcement replacement race
 (Finding 1) cannot occur on this ordered transport, only on QUIC.
 
+### v2 bulk synchronization wire mechanics
+
+[`v2/block_range.tla`](v2/block_range.tla) checks `get-block-range`'s exact
+arithmetic: descending anchored delivery, the count and byte bounds with
+the first-block exemption, and resumption (next anchor = parent of the last
+delivered block) across truncations and peer switches.
+[`v2/hashes_hints.tla`](v2/hashes_hints.tla) checks `get-hashes`' deferred
+hint penalties: hash-determined hints (`txs`) are penalizable on download,
+`size` only after the authorizing data commitment is verified.
+
+| Config | Behaviour | Checks | Expected |
+|---|---|---|---|
+| [`v2/block_range.cfg`](v2/block_range.cfg) | exact bounds, first block exempt | `RangeAssembled`, `AcceptedIsSuffix`, `NoHonestFlood` | passes |
+| [`v2/block_range_firstflood.cfg`](v2/block_range_firstflood.cfg) | requester counts the first block against the budget | `NoHonestFlood` | **violated** |
+| [`v2/hashes_hints.cfg`](v2/hashes_hints.cfg) / [`_liar.cfg`](v2/hashes_hints_liar.cfg) | draft rules; hint server may lie | `PenaltyImpliesLie` + `LiarEventuallyPenalized` | passes |
+| [`v2/hashes_hints_evict.cfg`](v2/hashes_hints_evict.cfg) | size mismatch penalized before verification | `PenaltyImpliesLie` | **violated** (padding peer frames the hint server) |
+
+Also noted: `txouts` is determined by the block hash exactly as `txs` is —
+and the draft has the requester rely on it — yet it appears in neither the
+verify-and-penalize sentence nor the penalty table (feedback item 14).
+
 ### v2 misbehavior and banning
 
 [`v2/misbehavior.tla`](v2/misbehavior.tla) models the draft's "Misbehavior and

@@ -319,6 +319,37 @@ jobs:
           echo "OK: concurrent/cumulative divergence reproduced as expected"
         fi
 
+    - name: get-block-range resumption arithmetic must verify
+      working-directory: v2
+      run: |
+        timeout 200 java -jar ../tla2tools.jar -config block_range.cfg block_range.tla
+
+    - name: Counting the first block against the byte budget must flood an honest responder
+      working-directory: v2
+      run: |
+        if timeout 200 java -jar ../tla2tools.jar -config block_range_firstflood.cfg block_range.tla; then
+          echo "ERROR: expected NoHonestFlood to be violated, but TLC found no error"
+          exit 1
+        else
+          echo "OK: first-block budget off-by-one reproduced as expected"
+        fi
+
+    - name: get-hashes deferred hint penalties must verify
+      working-directory: v2
+      run: |
+        timeout 120 java -jar ../tla2tools.jar -config hashes_hints.cfg hashes_hints.tla
+        timeout 120 java -jar ../tla2tools.jar -config hashes_hints_liar.cfg hashes_hints.tla
+
+    - name: Penalizing unverified size mismatches must frame an honest hint server
+      working-directory: v2
+      run: |
+        if timeout 120 java -jar ../tla2tools.jar -config hashes_hints_evict.cfg hashes_hints.tla; then
+          echo "ERROR: expected PenaltyImpliesLie to be violated, but TLC found no error"
+          exit 1
+        else
+          echo "OK: size-mismatch eviction primitive reproduced as expected"
+        fi
+
     - name: Misbehavior fixed behaviour must verify
       working-directory: v2
       run: |

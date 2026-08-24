@@ -270,3 +270,23 @@ race cannot occur on the Tor transport (the pipe is ordered, FIN precedes
 the replacement), so the singleton rule's literal reading is safe on Tor
 and fails only on QUIC — the fix belongs in the transport-independent
 sections, not the transport ones.
+
+## 14. "get-hashes" / "get-block-range": two small completions
+
+- `txouts` is determined by the block hash exactly as `txs` is, and the
+  draft has the requester rely on it (cumulative `txouts` positions the
+  spentness-hint bitmap of the sync draft) — yet it appears in neither
+  the verify-and-penalize sentence of "get-hashes" nor the penalty table
+  ("Misbehavior and Banning" lists only `txs` and `notes`). A lying
+  `txouts` misaligns the bitmap with no recourse. Suggest adding `txouts`
+  to both, or stating why it is exempt.
+- The first-block exemption from `max_bytes` must be implemented
+  identically by responder (stopping rule) and requester (FLOOD rule).
+  TLC (`v2/block_range_firstflood.cfg`) shows the natural off-by-one — a
+  requester counting the first delivered block against the budget —
+  disconnects an honest responder that delivers an over-budget anchor
+  block exactly as the draft requires. A non-normative sentence noting
+  the symmetry would prevent it. The resumption arithmetic itself
+  verifies exactly (`v2/block_range.cfg`), and the deferred hint-penalty
+  rules of "get-hashes" — including the size/eviction-primitive MUST NOT
+  — are confirmed load-bearing as written (`v2/hashes_hints_*.cfg`).

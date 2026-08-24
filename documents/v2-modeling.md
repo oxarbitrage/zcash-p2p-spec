@@ -10,8 +10,8 @@ not yet been updated for the new protocol — this document describes that
 update, phase by phase.
 
 All four phases plus the simultaneous-dial, get-mempool, Byzantine,
-compact-block, epoch, refinement and Tor-framing addenda are complete; this
-document describes them. Reference
+compact-block, epoch, refinement, Tor-framing and bulk-sync addenda are
+complete; this document describes them. Reference
 implementation consulted: Zebra's five-PR draft stack
 [#11273](https://github.com/ZcashFoundation/zebra/pull/11273) –
 [#11277](https://github.com/ZcashFoundation/zebra/pull/11277)
@@ -654,3 +654,48 @@ so the receiver never sees two open streams of one type. The literal
 singleton rule is safe on Tor and honest-peer-fatal on QUIC — one
 plausible explanation for how the rule got written, and a reason the fix
 must live in the transport-independent sections.
+
+## Addendum — bulk synchronization wire mechanics
+
+Phase 3 modeled the scheduler's treatment of request *outcomes*; these two
+modules check the bulk primitives' exact *arithmetic*, the part the
+scheduler abstracted away.
+
+### get-block-range (`v2/block_range.tla`)
+
+A requester assembles the chain by repeated anchored requests against two
+responders, with adversarial block sizes, truncation points and peer
+switches. `AcceptedIsSuffix` (what is accepted is exactly the chain above
+the current anchor — resumption loses nothing, repeats nothing) and
+`RangeAssembled` hold over the complete state space (284 states);
+`NoHonestFlood` confirms the requester's FLOOD arithmetic and the
+responder's stopping rule agree, *including* the first-block byte-budget
+exemption. The negative configuration flips the natural off-by-one — the
+requester counts the first delivered block against the budget — and an
+honest responder delivering an over-budget anchor block, exactly as the
+draft requires it to, is disconnected as a flooder in three steps. The
+first-block rule must be implemented on both sides or not at all; worth a
+non-normative sentence (folded into feedback item 14).
+
+### get-hashes deferred penalties (`v2/hashes_hints.tla`)
+
+A requester takes hints from one peer and the block from another. The
+draft's asymmetry is confirmed load-bearing in both directions:
+
+- `txs` (hash-determined): a lying hint server is penalized on download;
+  `PenaltyImpliesLie` and `LiarEventuallyPenalized` hold, including for
+  `size` lies once the authorizing data commitment is verified — the
+  deferred penalty lands.
+- `size` (NOT hash-determined): penalizing an unverified mismatch, against
+  the draft's MUST NOT, lets a block server that pads its serializations
+  frame the honest hint server — `PenaltyImpliesLie` violated in three
+  steps, the draft's own "eviction primitive rather than a defense"
+  warning reproduced as a counterexample.
+
+**Observation (feedback item 14):** `txouts` is determined by the block
+hash exactly as `txs` is (it is a function of the transactions), and the
+draft has the requester *rely* on it — cumulative `txouts` values position
+the spentness-hint bitmap — yet it appears in neither the
+verify-and-penalize sentence of "get-hashes" nor the penalty table. A
+lying `txouts` misaligns the bitmap with no recourse. Either add `txouts`
+to both lists or state why it is exempt.

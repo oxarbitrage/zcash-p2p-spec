@@ -49,7 +49,7 @@ jobs:
         ps2pdf sync_scheduler.ps sync_scheduler.pdf
         (
           cd v2
-          for mod in protocol streams records sync_scheduler misbehavior dial mempool_sub compact_relay epoch downloader framing; do
+          for mod in protocol streams records sync_scheduler misbehavior dial mempool_sub compact_relay epoch downloader framing block_range hashes_hints; do
             java -cp ../tla2tools.jar tla2tex.TLA -shade -noPcalShade $mod.tla
             ps2pdf $mod.ps ../v2-$mod.pdf
           done
