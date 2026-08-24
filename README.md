@@ -361,12 +361,13 @@ model keeps its own fairness and liveness. A deliberately broken mapping
 fails the check, so it has teeth.
 
 [`v2/sync_scheduler_ind.tla`](v2/sync_scheduler_ind.tla) complements TLC
-with [Apalache](https://apalache-mc.org) symbolic checking: bounded depth,
-but with `LagTip`, `MaxRetries` and `UnresponsiveLimit` left symbolic — the
-scheduler's safety invariants hold up to depth 8 for *every* lag depth,
-retry bound and unresponsive limit at once (verified locally with Apalache
-0.62.1; not in CI, SMT solve times are machine-dependent). A full inductive
-proof was attempted and found impractical; the module records the details.
+with [Apalache](https://apalache-mc.org): the scheduler's safety invariants
+are proven **inductive** at `MaxBlock = 4` with `LagTip`, `MaxRetries` and
+`UnresponsiveLimit` left symbolic — they hold at *every* depth for *every*
+lag depth, retry bound and unresponsive limit at once (Apalache 0.62.1; the
+induction step is a ~3-hour Z3 solve, plus a satisfiability canary ruling
+out vacuity). Local-only, not in CI — SMT solve times are machine-dependent;
+a ~3-minute depth-8 bounded run is the quick reproducible check.
 
 ## Generated PDFs
 

@@ -23,21 +23,30 @@ Two constant initializers:
 
 Verified locally with Apalache 0.62.1 (results pinned in
 ../documents/v2-modeling.md; not run in CI — SMT solve times are too
-machine-dependent):
+machine-dependent). IndInv is proven INDUCTIVE at MaxBlock = 4 — every
+reachable state at ANY depth satisfies it, for all symbolic parameter
+values — by the base and step checks; the step is one long Z3 solve
+(about three hours):
 
-  # symbolic base cases (seconds each)
-  apalache-mc check --config=sync_scheduler_ind.cfg --cinit=CInitFixed       --init=Init --inv=IndInv --length=0 sync_scheduler_ind.tla
-  apalache-mc check --config=sync_scheduler_ind.cfg --cinit=CInitAny       --init=Init --inv=IndInvAny --length=0 sync_scheduler_ind.tla
+  # base: Init => IndInv (seconds)
+  apalache-mc check --config=sync_scheduler_ind.cfg --cinit=CInitFixed \
+      --init=Init --inv=IndInv --length=0 sync_scheduler_ind.tla
+  # step: IndInv /\ Next => IndInv' from Gen-arbitrary states (hours)
+  apalache-mc check --config=sync_scheduler_ind.cfg --cinit=CInitFixed \
+      --init=IndInit --inv=IndInv --length=1 sync_scheduler_ind.tla
+  # non-vacuity canary: MUST report a violation (IndInit is satisfiable)
+  apalache-mc check --config=sync_scheduler_ind.cfg --cinit=CInitFixed \
+      --init=IndInit --inv=SatCanary --length=0 sync_scheduler_ind.tla
 
-  # bounded symbolic exploration (about 3 minutes)
-  apalache-mc check --config=sync_scheduler_ind.cfg --cinit=CInitFixed       --init=Init --inv=IndInv --length=8 sync_scheduler_ind.tla
+  # quick reproducible check instead of the long step (about 3 minutes):
+  # bounded symbolic exploration to depth 8 at MaxBlock = 2
+  apalache-mc check --config=sync_scheduler_ind.cfg --cinit=CInitFixed \
+      --init=Init --inv=IndInv --length=8 sync_scheduler_ind.tla
 
-With symbolic MaxRetries, runs can be arbitrarily long, so no finite depth
-is complete: the bounded result means no violation within 8 steps for any
-parameter valuation. A full inductive proof (Inv /\ Next => Inv' from
-Gen-arbitrary states — IndInit below) was attempted and is impractical:
-the induction step ran over three hours without a verdict at MaxBlock = 4.
-The definitions are kept for future Apalache versions.
+The base checks also pass for CInitAny with IndInvAny (seconds). The
+sync_scheduler_ind.cfg in this directory sets MaxBlock = 6 for the base
+checks; the inductive step and the bounded run were completed at
+MaxBlock = 4 and 2 respectively (substitute in the cfg to reproduce).
 
 ApaTypeOK restates TypeOK without function sets over symbolic ranges
 (unsupported). This module is Apalache-only: TLC does not run it.
@@ -106,5 +115,10 @@ GenState ==
 
 IndInit    == GenState /\ IndInv
 IndInitAny == GenState /\ IndInvAny
+
+\* Satisfiability canary: checking this "invariant" over IndInit MUST
+\* report a violation, proving IndInit admits at least one state and the
+\* induction step is not vacuous.
+SatCanary == FALSE
 
 ====

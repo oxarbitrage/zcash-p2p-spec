@@ -581,16 +581,22 @@ depth, all parameter valuations at once — `LagTip`, `MaxRetries`,
 |---|---|
 | symbolic base, fixed behaviour (`--length=0`) | NoError, seconds |
 | symbolic base, ALL switches symbolic (`--length=0`) | NoError, seconds |
-| bounded exploration to depth 8, fixed behaviour | NoError, ~3 minutes |
+| bounded exploration to depth 8, fixed behaviour, `MaxBlock = 2` | NoError, ~3 minutes |
+| **inductive step** (`IndInv /\ Next => IndInv'` from arbitrary `Gen` states), fixed behaviour, `MaxBlock = 4` | **NoError, one ~3-hour Z3 solve** |
+| satisfiability canary (`SatCanary = FALSE` over `IndInit`) | violated in seconds — `IndInit` admits states, the induction is not vacuous |
 
-With symbolic `MaxRetries` runs can be arbitrarily long, so no finite
-depth is complete; the result is "no violation within 8 steps for any
-parameter valuation". A full inductive proof (arbitrary `Gen` states, one
-`Next` step) was attempted and is impractical with current Apalache: the
-step check ran over three hours without a verdict at `MaxBlock = 4`. Two
+Together the base and step checks prove `IndInv` — `TypeOK`,
+`RegistryHonest`, `RegistryHasIsSound`, `VerifiedAreReal` — is an
+**inductive invariant** of the fixed scheduler at `MaxBlock = 4`: it holds
+at every depth, for every `LagTip`, `MaxRetries` and `UnresponsiveLimit`
+in Nat. That is a claim TLC cannot make (it fixed all three constants and
+`MaxBlock = 2`). The depth-8 bounded run is the quick reproducible check
+for anyone unwilling to spend hours of solver time. Two
 tool limitations found on the way, recorded for reuse: symbolic integer
 ranges (`1..N` with symbolic `N`) are unsupported anywhere, and `@type`
 annotations attach correctly only in the single `CONSTANTS`-block
 declaration style. Apalache runs are local-only — SMT solve times are too
 machine-dependent for CI — with the module, config and exact commands in
-the repository.
+the repository. (An earlier revision of this section reported the
+induction step as impractical; the long solve later completed with
+NoError, and the canary confirmed non-vacuity.)
