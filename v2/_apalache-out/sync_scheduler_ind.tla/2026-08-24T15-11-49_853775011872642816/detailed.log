@@ -1,0 +1,111 @@
+2026-08-24T15:11:49,584 [main] INFO  a.f.a.t.Tool$ - # APALACHE version: 0.62.1 | build: a321771
+2026-08-24T15:11:49,586 [main] INFO  a.f.a.i.c.ApalacheConfigResolver$ -   > sync_scheduler_ind.cfg: Loading TLC configuration
+2026-08-24T15:11:49,621 [main] INFO  a.f.a.i.c.ApalacheConfigResolver$ -   > Using next predicate(s) Next from the TLC config
+2026-08-24T15:11:49,622 [main] WARN  a.f.a.t.t.o.CheckCmd - checker.init overrides the value from the TLC configuration.
+2026-08-24T15:11:49,622 [main] INFO  a.f.a.t.t.o.CheckCmd - Tuning: 
+2026-08-24T15:11:49,729 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #0: SanyParser
+2026-08-24T15:11:49,903 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #0: SanyParser [OK]
+2026-08-24T15:11:49,903 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #1: TypeCheckerSnowcat
+2026-08-24T15:11:49,904 [main] INFO  a.f.a.t.p.t.EtcTypeCheckerPassImpl -  > Running Snowcat .::.
+2026-08-24T15:11:50,227 [main] INFO  a.f.a.t.p.t.EtcTypeCheckerPassImpl -  > Your types are purrfect!
+2026-08-24T15:11:50,228 [main] INFO  a.f.a.t.p.t.EtcTypeCheckerPassImpl -  > All expressions are typed
+2026-08-24T15:11:50,228 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #1: TypeCheckerSnowcat [OK]
+2026-08-24T15:11:50,228 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #2: ConfigurationPass
+2026-08-24T15:11:50,315 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > sync_scheduler_ind.cfg: found INVARIANTS: IndInvAny
+2026-08-24T15:11:50,316 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > Set the initialization predicate to Init
+2026-08-24T15:11:50,316 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > Set the transition predicate to Next
+2026-08-24T15:11:50,316 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > Set the constant initialization predicate to CInitAny
+2026-08-24T15:11:50,316 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > Set an invariant to IndInvAny
+2026-08-24T15:11:50,319 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #2: ConfigurationPass [OK]
+2026-08-24T15:11:50,319 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #3: DesugarerPass
+2026-08-24T15:11:50,319 [main] INFO  a.f.a.t.p.p.DesugarerPassImpl -   > Desugaring...
+2026-08-24T15:11:50,328 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #3: DesugarerPass [OK]
+2026-08-24T15:11:50,328 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #4: InlinePass
+2026-08-24T15:11:50,329 [main] INFO  a.f.a.t.p.p.InlinePassImpl - Leaving only relevant operators: CInitAny, CInitAnyPrimed, IndInvAny, Init, InitPrimed, Next
+2026-08-24T15:11:50,367 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #4: InlinePass [OK]
+2026-08-24T15:11:50,368 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #5: TemporalPass
+2026-08-24T15:11:50,368 [main] INFO  a.f.a.t.p.p.TemporalPassImpl -   > Rewriting temporal operators...
+2026-08-24T15:11:50,368 [main] INFO  a.f.a.t.p.p.TemporalPassImpl -   > No temporal property specified, nothing to encode
+2026-08-24T15:11:50,368 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #5: TemporalPass [OK]
+2026-08-24T15:11:50,368 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #6: InlinePass
+2026-08-24T15:11:50,368 [main] INFO  a.f.a.t.p.p.InlinePassImpl - Leaving only relevant operators: CInitAny, CInitAnyPrimed, IndInvAny, Init, InitPrimed, Next
+2026-08-24T15:11:50,377 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #6: InlinePass [OK]
+2026-08-24T15:11:50,377 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #7: PrimingPass
+2026-08-24T15:11:50,378 [main] INFO  a.f.a.t.p.a.PrimingPassImpl -   > Introducing CInitAnyPrimed for CInitAny'
+2026-08-24T15:11:50,378 [main] INFO  a.f.a.t.p.a.PrimingPassImpl -   > Introducing InitPrimed for Init'
+2026-08-24T15:11:50,378 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #7: PrimingPass [OK]
+2026-08-24T15:11:50,378 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #8: VCGen
+2026-08-24T15:11:50,379 [main] INFO  a.f.a.t.b.p.VCGenPassImpl -   > Producing verification conditions from the invariant IndInvAny
+2026-08-24T15:11:50,381 [main] INFO  a.f.a.t.b.VCGenerator -   > VCGen produced 17 verification condition(s)
+2026-08-24T15:11:50,383 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #8: VCGen [OK]
+2026-08-24T15:11:50,383 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #9: PreprocessingPass
+2026-08-24T15:11:50,383 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > Before preprocessing: unique renaming
+2026-08-24T15:11:50,386 [main] INFO  a.f.a.t.p.p.PreproPassImpl -  > Applying standard transformations:
+2026-08-24T15:11:50,386 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > PrimePropagation
+2026-08-24T15:11:50,388 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > Desugarer
+2026-08-24T15:11:50,390 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > UniqueRenamer
+2026-08-24T15:11:50,398 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > Normalizer
+2026-08-24T15:11:50,401 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > SetMembershipSimplifier
+2026-08-24T15:11:50,404 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > Keramelizer
+2026-08-24T15:11:50,413 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > After preprocessing: UniqueRenamer
+2026-08-24T15:11:50,419 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #9: PreprocessingPass [OK]
+2026-08-24T15:11:50,419 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #10: TransitionFinderPass
+2026-08-24T15:11:50,432 [main] INFO  a.f.a.t.p.a.TransitionPassImpl -   > Found 1 initializing transitions
+2026-08-24T15:11:50,438 [main] INFO  a.f.a.t.p.a.TransitionPassImpl -   > Found 8 transitions
+2026-08-24T15:11:50,438 [main] INFO  a.f.a.t.p.a.TransitionPassImpl -   > Found constant initializer CInitAny
+2026-08-24T15:11:50,440 [main] DEBUG a.f.a.i.p.PassChainExecutor - Adapted exception intercepted: 
+at.forsyte.apalache.tla.assignments.AssignmentException: sync_scheduler_ind.tla:55:35-55:42: MaxBlock' is used before it is assigned. See https://apalache-mc.org/docs/apalache/principles/assignments.html
+	at at.forsyte.apalache.tla.assignments.SmtFreeSymbolicTransitionExtractor.$anonfun$throwOnUseBeforeAssignment$1(SmtFreeSymbolicTransitionExtractor.scala:36)
+	at at.forsyte.apalache.tla.assignments.SmtFreeSymbolicTransitionExtractor.$anonfun$throwOnUseBeforeAssignment$1$adapted(SmtFreeSymbolicTransitionExtractor.scala:25)
+	at scala.collection.immutable.List.foreach(List.scala:323)
+	at at.forsyte.apalache.tla.assignments.SmtFreeSymbolicTransitionExtractor.$anonfun$getStrategyOptInternal$1(SmtFreeSymbolicTransitionExtractor.scala:162)
+	at at.forsyte.apalache.tla.assignments.SmtFreeSymbolicTransitionExtractor.$anonfun$getStrategyOptInternal$2(SmtFreeSymbolicTransitionExtractor.scala:107)
+	at scala.collection.LinearSeqOps.foldLeft(LinearSeq.scala:183)
+	at scala.collection.LinearSeqOps.foldLeft$(LinearSeq.scala:179)
+	at scala.collection.immutable.List.foldLeft(List.scala:79)
+	at at.forsyte.apalache.tla.assignments.SmtFreeSymbolicTransitionExtractor.$anonfun$getStrategyOptInternal$1(SmtFreeSymbolicTransitionExtractor.scala:107)
+	at at.forsyte.apalache.tla.assignments.SmtFreeSymbolicTransitionExtractor.$anonfun$getStrategyOptInternal$2(SmtFreeSymbolicTransitionExtractor.scala:107)
+	at scala.collection.LinearSeqOps.foldLeft(LinearSeq.scala:183)
+	at scala.collection.LinearSeqOps.foldLeft$(LinearSeq.scala:179)
+	at scala.collection.immutable.List.foldLeft(List.scala:79)
+	at at.forsyte.apalache.tla.assignments.SmtFreeSymbolicTransitionExtractor.$anonfun$getStrategyOptInternal$1(SmtFreeSymbolicTransitionExtractor.scala:107)
+	at at.forsyte.apalache.tla.assignments.SmtFreeSymbolicTransitionExtractor.$anonfun$getStrategyOptInternal$2(SmtFreeSymbolicTransitionExtractor.scala:107)
+	at scala.collection.LinearSeqOps.foldLeft(LinearSeq.scala:183)
+	at scala.collection.LinearSeqOps.foldLeft$(LinearSeq.scala:179)
+	at scala.collection.immutable.List.foldLeft(List.scala:79)
+	at at.forsyte.apalache.tla.assignments.SmtFreeSymbolicTransitionExtractor.$anonfun$getStrategyOptInternal$1(SmtFreeSymbolicTransitionExtractor.scala:107)
+	at at.forsyte.apalache.tla.assignments.SmtFreeSymbolicTransitionExtractor.getStrategy(SmtFreeSymbolicTransitionExtractor.scala:175)
+	at at.forsyte.apalache.tla.assignments.SmtFreeSymbolicTransitionExtractor.apply(SmtFreeSymbolicTransitionExtractor.scala:197)
+	at at.forsyte.apalache.tla.passes.assignments.TransitionPassImpl.extractTransitions$1(TransitionPassImpl.scala:41)
+	at at.forsyte.apalache.tla.passes.assignments.TransitionPassImpl.execute(TransitionPassImpl.scala:72)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.exec(PassChainExecutor.scala:70)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.$anonfun$runPassOnModule$3(PassChainExecutor.scala:59)
+	at scala.util.Either.flatMap(Either.scala:360)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.$anonfun$runPassOnModule$1(PassChainExecutor.scala:57)
+	at scala.collection.LinearSeqOps.foldLeft(LinearSeq.scala:183)
+	at scala.collection.LinearSeqOps.foldLeft$(LinearSeq.scala:179)
+	at scala.collection.immutable.List.foldLeft(List.scala:79)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.runOnPasses(PassChainExecutor.scala:50)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.run(PassChainExecutor.scala:41)
+	at at.forsyte.apalache.tla.tooling.opt.CheckCmd.$anonfun$run$1(CheckCmd.scala:195)
+	at at.forsyte.apalache.tla.tooling.opt.ApalacheCommand.runWithOptions(ApalacheCommand.scala:190)
+	at at.forsyte.apalache.tla.tooling.opt.CheckCmd.run(CheckCmd.scala:191)
+	at at.forsyte.apalache.tla.Tool$.runCommand(Tool.scala:169)
+	at at.forsyte.apalache.tla.Tool$.runInScope(Tool.scala:148)
+	at at.forsyte.apalache.tla.Tool$.$anonfun$run$1(Tool.scala:102)
+	at scala.runtime.java8.JFunction0$mcI$sp.apply(JFunction0$mcI$sp.scala:17)
+	at at.forsyte.apalache.io.OutputManager$.$anonfun$withState$1(OutputManager.scala:280)
+	at java.base/jdk.internal.vm.ScopedValueContainer.runWithoutScope(ScopedValueContainer.java:112)
+	at java.base/jdk.internal.vm.ScopedValueContainer.run(ScopedValueContainer.java:98)
+	at java.base/java.lang.ScopedValue$Carrier.run(ScopedValue.java:468)
+	at at.forsyte.apalache.io.OutputManager$.at$forsyte$apalache$io$OutputManager$$withState(OutputManager.scala:280)
+	at at.forsyte.apalache.io.OutputManager$Scope.run(OutputManager.scala:253)
+	at at.forsyte.apalache.io.OutputManager$.withScope(OutputManager.scala:259)
+	at at.forsyte.apalache.tla.Tool$.run(Tool.scala:102)
+	at at.forsyte.apalache.tla.Tool$.main(Tool.scala:38)
+	at at.forsyte.apalache.tla.Tool.main(Tool.scala)
+2026-08-24T15:11:50,440 [main] INFO  a.f.a.t.b.c.CheckerExceptionAdapter - To understand the error, read the manual:
+2026-08-24T15:11:50,440 [main] INFO  a.f.a.t.b.c.CheckerExceptionAdapter -   [https://apalache-mc.org/docs/apalache/principles/assignments.html]
+2026-08-24T15:11:50,441 [main] ERROR a.f.a.t.Tool$ - Assignment error: sync_scheduler_ind.tla:55:35-55:42: MaxBlock' is used before it is assigned. See https://apalache-mc.org/docs/apalache/principles/assignments.html
+2026-08-24T15:11:50,441 [main] INFO  a.f.a.t.Tool$ - It took me 0 days  0 hours  0 min  0 sec
+2026-08-24T15:11:50,441 [main] INFO  a.f.a.t.Tool$ - Total time: 0.855 sec

@@ -1,0 +1,1 @@
+ check --config=ind4_tmp.cfg --cinit=CInitFixed --init=IndInit --inv=IndInv --length=1 sync_scheduler_ind.tla

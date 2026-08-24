@@ -342,6 +342,32 @@ CONSTANT peer1 = peer1   \* model value
 
 **Important caveat:** symmetry reduction is sound for safety properties but can theoretically miss liveness counterexamples (a known TLC limitation). The 2-peer config intentionally omits symmetry to give a complete, trustworthy proof of the `EventualConsensus` liveness property.
 
+## Refinement and symbolic checking
+
+The two v2 sync models are formally tied through a common abstraction:
+[`v2/downloader.tla`](v2/downloader.tla), the minimal download pipeline
+(verified and in-flight blocks; request, deliver, requeue, extend). TLC
+checks both refinement mappings mechanically:
+
+- [`v2/sched_refinement.tla`](v2/sched_refinement.tla) — the scheduler
+  refines the downloader (registry, retries and peers forgotten; every
+  non-delivery outcome maps to a requeue).
+- [`v2/refinement.tla`](v2/refinement.tla) — the stream-level protocol
+  refines the downloader, one pipeline per peer (in-flight blocks recovered
+  from the get-blocks request and response records still queued on streams).
+
+The refinement is over safety only: it ties pipeline structure, while each
+model keeps its own fairness and liveness. A deliberately broken mapping
+fails the check, so it has teeth.
+
+[`v2/sync_scheduler_ind.tla`](v2/sync_scheduler_ind.tla) complements TLC
+with [Apalache](https://apalache-mc.org) symbolic checking: bounded depth,
+but with `LagTip`, `MaxRetries` and `UnresponsiveLimit` left symbolic — the
+scheduler's safety invariants hold up to depth 8 for *every* lag depth,
+retry bound and unresponsive limit at once (verified locally with Apalache
+0.62.1; not in CI, SMT solve times are machine-dependent). A full inductive
+proof was attempted and found impractical; the module records the details.
+
 ## Generated PDFs
 
 Typeset versions of the spec are available in [`documents/`](documents/):

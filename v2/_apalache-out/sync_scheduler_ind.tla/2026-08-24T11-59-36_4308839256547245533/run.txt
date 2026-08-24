@@ -1,0 +1,1 @@
+ typecheck sync_scheduler_ind.tla

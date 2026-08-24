@@ -1,0 +1,1 @@
+ check --cinit=CInitAny --init=IndInvAny --inv=IndInvAny --length=1 sync_scheduler_ind.tla

@@ -157,6 +157,16 @@ jobs:
       run: |
         timeout 120 java -jar ../tla2tools.jar -workers auto -config protocol_3peers.cfg protocol.tla || true
 
+    - name: Scheduler must refine the downloader abstraction
+      working-directory: v2
+      run: |
+        timeout 120 java -jar ../tla2tools.jar -config sched_refinement.cfg sched_refinement.tla
+
+    - name: Protocol must refine the downloader abstraction (2 peers, complete)
+      working-directory: v2
+      run: |
+        timeout 600 java -jar ../tla2tools.jar -workers auto -config refinement.cfg refinement.tla
+
     - name: v2 scheduler fixed behaviour must verify
       working-directory: v2
       run: |

@@ -1,0 +1,42 @@
+2026-08-24T11:59:36,768 [main] INFO  a.f.a.t.Tool$ - # APALACHE version: 0.62.1 | build: a321771
+2026-08-24T11:59:36,771 [main] INFO  a.f.a.t.t.o.TypeCheckCmd - Type checking sync_scheduler_ind.tla
+2026-08-24T11:59:36,874 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #0: SanyParser
+2026-08-24T11:59:37,045 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #0: SanyParser [OK]
+2026-08-24T11:59:37,046 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #1: TypeCheckerSnowcat
+2026-08-24T11:59:37,046 [main] INFO  a.f.a.t.p.t.EtcTypeCheckerPassImpl -  > Running Snowcat .::.
+2026-08-24T11:59:37,108 [main] DEBUG a.f.a.i.p.PassChainExecutor - Adapted exception intercepted: 
+at.forsyte.apalache.tla.typecheck.TypingInputException: Expected a type annotation for CONSTANT UnresponsiveLimit
+	at at.forsyte.apalache.tla.typecheck.etc.ToEtcExpr.apply(ToEtcExpr.scala:38)
+	at at.forsyte.apalache.tla.typecheck.TypeCheckerTool.$anonfun$check$1(TypeCheckerTool.scala:47)
+	at scala.collection.immutable.List.foldRight(List.scala:342)
+	at at.forsyte.apalache.tla.typecheck.TypeCheckerTool.check(TypeCheckerTool.scala:46)
+	at at.forsyte.apalache.tla.passes.typecheck.EtcTypeCheckerPassImpl.execute(EtcTypeCheckerPassImpl.scala:56)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.exec(PassChainExecutor.scala:70)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.$anonfun$runPassOnModule$3(PassChainExecutor.scala:59)
+	at scala.util.Either.flatMap(Either.scala:360)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.$anonfun$runPassOnModule$1(PassChainExecutor.scala:57)
+	at scala.collection.LinearSeqOps.foldLeft(LinearSeq.scala:183)
+	at scala.collection.LinearSeqOps.foldLeft$(LinearSeq.scala:179)
+	at scala.collection.immutable.List.foldLeft(List.scala:79)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.runOnPasses(PassChainExecutor.scala:50)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.run(PassChainExecutor.scala:41)
+	at at.forsyte.apalache.tla.tooling.opt.TypeCheckCmd.$anonfun$run$1(TypeCheckCmd.scala:59)
+	at at.forsyte.apalache.tla.tooling.opt.ApalacheCommand.runWithOptions(ApalacheCommand.scala:190)
+	at at.forsyte.apalache.tla.tooling.opt.TypeCheckCmd.run(TypeCheckCmd.scala:57)
+	at at.forsyte.apalache.tla.Tool$.runCommand(Tool.scala:169)
+	at at.forsyte.apalache.tla.Tool$.runInScope(Tool.scala:148)
+	at at.forsyte.apalache.tla.Tool$.$anonfun$run$1(Tool.scala:102)
+	at scala.runtime.java8.JFunction0$mcI$sp.apply(JFunction0$mcI$sp.scala:17)
+	at at.forsyte.apalache.io.OutputManager$.$anonfun$withState$1(OutputManager.scala:280)
+	at java.base/jdk.internal.vm.ScopedValueContainer.runWithoutScope(ScopedValueContainer.java:112)
+	at java.base/jdk.internal.vm.ScopedValueContainer.run(ScopedValueContainer.java:98)
+	at java.base/java.lang.ScopedValue$Carrier.run(ScopedValue.java:468)
+	at at.forsyte.apalache.io.OutputManager$.at$forsyte$apalache$io$OutputManager$$withState(OutputManager.scala:280)
+	at at.forsyte.apalache.io.OutputManager$Scope.run(OutputManager.scala:253)
+	at at.forsyte.apalache.io.OutputManager$.withScope(OutputManager.scala:259)
+	at at.forsyte.apalache.tla.Tool$.run(Tool.scala:102)
+	at at.forsyte.apalache.tla.Tool$.main(Tool.scala:38)
+	at at.forsyte.apalache.tla.Tool.main(Tool.scala)
+2026-08-24T11:59:37,109 [main] ERROR a.f.a.t.Tool$ - Typing input error: Expected a type annotation for CONSTANT UnresponsiveLimit
+2026-08-24T11:59:37,109 [main] INFO  a.f.a.t.Tool$ - It took me 0 days  0 hours  0 min  0 sec
+2026-08-24T11:59:37,109 [main] INFO  a.f.a.t.Tool$ - Total time: 0.339 sec

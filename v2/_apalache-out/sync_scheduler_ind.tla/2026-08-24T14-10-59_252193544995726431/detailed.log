@@ -1,0 +1,132 @@
+2026-08-24T14:10:59,560 [main] INFO  a.f.a.t.Tool$ - # APALACHE version: 0.62.1 | build: a321771
+2026-08-24T14:10:59,563 [main] INFO  a.f.a.t.t.o.CheckCmd - Tuning: 
+2026-08-24T14:10:59,691 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #0: SanyParser
+2026-08-24T14:10:59,871 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #0: SanyParser [OK]
+2026-08-24T14:10:59,871 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #1: TypeCheckerSnowcat
+2026-08-24T14:10:59,872 [main] INFO  a.f.a.t.p.t.EtcTypeCheckerPassImpl -  > Running Snowcat .::.
+2026-08-24T14:11:00,149 [main] INFO  a.f.a.t.p.t.EtcTypeCheckerPassImpl -  > Your types are purrfect!
+2026-08-24T14:11:00,149 [main] INFO  a.f.a.t.p.t.EtcTypeCheckerPassImpl -  > All expressions are typed
+2026-08-24T14:11:00,149 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #1: TypeCheckerSnowcat [OK]
+2026-08-24T14:11:00,149 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #2: ConfigurationPass
+2026-08-24T14:11:00,152 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > Set the initialization predicate to Init
+2026-08-24T14:11:00,152 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > Set the transition predicate to Next
+2026-08-24T14:11:00,152 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > Set the constant initialization predicate to CInitFixed
+2026-08-24T14:11:00,152 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > Set an invariant to IndInv
+2026-08-24T14:11:00,155 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #2: ConfigurationPass [OK]
+2026-08-24T14:11:00,155 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #3: DesugarerPass
+2026-08-24T14:11:00,155 [main] INFO  a.f.a.t.p.p.DesugarerPassImpl -   > Desugaring...
+2026-08-24T14:11:00,275 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #3: DesugarerPass [OK]
+2026-08-24T14:11:00,275 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #4: InlinePass
+2026-08-24T14:11:00,275 [main] INFO  a.f.a.t.p.p.InlinePassImpl - Leaving only relevant operators: CInitFixed, CInitFixedPrimed, IndInv, Init, InitPrimed, Next
+2026-08-24T14:11:00,316 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #4: InlinePass [OK]
+2026-08-24T14:11:00,317 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #5: TemporalPass
+2026-08-24T14:11:00,317 [main] INFO  a.f.a.t.p.p.TemporalPassImpl -   > Rewriting temporal operators...
+2026-08-24T14:11:00,317 [main] INFO  a.f.a.t.p.p.TemporalPassImpl -   > No temporal property specified, nothing to encode
+2026-08-24T14:11:00,317 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #5: TemporalPass [OK]
+2026-08-24T14:11:00,317 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #6: InlinePass
+2026-08-24T14:11:00,317 [main] INFO  a.f.a.t.p.p.InlinePassImpl - Leaving only relevant operators: CInitFixed, CInitFixedPrimed, IndInv, Init, InitPrimed, Next
+2026-08-24T14:11:00,324 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #6: InlinePass [OK]
+2026-08-24T14:11:00,324 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #7: PrimingPass
+2026-08-24T14:11:00,325 [main] INFO  a.f.a.t.p.a.PrimingPassImpl -   > Introducing CInitFixedPrimed for CInitFixed'
+2026-08-24T14:11:00,327 [main] INFO  a.f.a.t.p.a.PrimingPassImpl -   > Introducing InitPrimed for Init'
+2026-08-24T14:11:00,328 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #7: PrimingPass [OK]
+2026-08-24T14:11:00,328 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #8: VCGen
+2026-08-24T14:11:00,328 [main] INFO  a.f.a.t.b.p.VCGenPassImpl -   > Producing verification conditions from the invariant IndInv
+2026-08-24T14:11:00,330 [main] INFO  a.f.a.t.b.VCGenerator -   > VCGen produced 10 verification condition(s)
+2026-08-24T14:11:00,332 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #8: VCGen [OK]
+2026-08-24T14:11:00,332 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #9: PreprocessingPass
+2026-08-24T14:11:00,332 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > Before preprocessing: unique renaming
+2026-08-24T14:11:00,335 [main] INFO  a.f.a.t.p.p.PreproPassImpl -  > Applying standard transformations:
+2026-08-24T14:11:00,335 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > PrimePropagation
+2026-08-24T14:11:00,337 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > Desugarer
+2026-08-24T14:11:00,340 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > UniqueRenamer
+2026-08-24T14:11:00,345 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > Normalizer
+2026-08-24T14:11:00,349 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > SetMembershipSimplifier
+2026-08-24T14:11:00,352 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > Keramelizer
+2026-08-24T14:11:00,361 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > After preprocessing: UniqueRenamer
+2026-08-24T14:11:00,370 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #9: PreprocessingPass [OK]
+2026-08-24T14:11:00,370 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #10: TransitionFinderPass
+2026-08-24T14:11:00,384 [main] INFO  a.f.a.t.p.a.TransitionPassImpl -   > Found 1 initializing transitions
+2026-08-24T14:11:00,390 [main] INFO  a.f.a.t.p.a.TransitionPassImpl -   > Found 8 transitions
+2026-08-24T14:11:00,390 [main] INFO  a.f.a.t.p.a.TransitionPassImpl -   > Found constant initializer CInitFixed
+2026-08-24T14:11:00,391 [main] INFO  a.f.a.t.p.a.TransitionPassImpl -   > Applying unique renaming
+2026-08-24T14:11:00,396 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #10: TransitionFinderPass [OK]
+2026-08-24T14:11:00,396 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #11: OptimizationPass
+2026-08-24T14:11:00,398 [main] INFO  a.f.a.t.p.p.OptPassImpl -  > Applying optimizations:
+2026-08-24T14:11:00,399 [main] INFO  a.f.a.t.p.p.OptPassImpl -   > ConstSimplifier
+2026-08-24T14:11:00,405 [main] INFO  a.f.a.t.p.p.OptPassImpl -   > ExprOptimizer
+2026-08-24T14:11:00,408 [main] INFO  a.f.a.t.p.p.OptPassImpl -   > SetMembershipSimplifier
+2026-08-24T14:11:00,409 [main] INFO  a.f.a.t.p.p.OptPassImpl -   > ConstSimplifier
+2026-08-24T14:11:00,415 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #11: OptimizationPass [OK]
+2026-08-24T14:11:00,415 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #12: AnalysisPass
+2026-08-24T14:11:00,416 [main] INFO  a.f.a.t.b.p.AnalysisPassImpl -  > Marking skolemizable existentials and sets to be expanded...
+2026-08-24T14:11:00,416 [main] INFO  a.f.a.t.b.p.AnalysisPassImpl -   > Skolemization
+2026-08-24T14:11:00,416 [main] INFO  a.f.a.t.b.p.AnalysisPassImpl -   > Expansion
+2026-08-24T14:11:00,419 [main] INFO  a.f.a.t.b.p.AnalysisPassImpl -   > Remove unused let-in defs
+2026-08-24T14:11:00,421 [main] INFO  a.f.a.t.b.p.AnalysisPassImpl -  > Running analyzers...
+2026-08-24T14:11:00,423 [main] INFO  a.f.a.t.b.p.AnalysisPassImpl -   > Introduced expression grades
+2026-08-24T14:11:00,423 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #12: AnalysisPass [OK]
+2026-08-24T14:11:00,423 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #13: BoundedChecker
+2026-08-24T14:11:00,433 [main] DEBUG a.f.a.t.b.s.Z3SolverContext - Creating Z3 solver context 0
+2026-08-24T14:11:01,772 [main] DEBUG a.f.a.t.b.t.TransitionExecutorImpl - Initializing CONSTANTS
+2026-08-24T14:11:01,800 [main] DEBUG a.f.a.t.b.t.TransitionExecutorImpl - Step #0, transition #0
+2026-08-24T14:11:01,800 [main] DEBUG a.f.a.t.b.t.TransitionExecutorImpl - Translating to SMT
+2026-08-24T14:11:01,802 [main] DEBUG a.f.a.i.p.PassChainExecutor - Adapted exception intercepted: 
+at.forsyte.apalache.tla.pp.NotInKeraError: Expected a constant integer range in [ .. ], found 1..MaxBlock. This is a known issue: [https://apalache-mc.org/docs/apalache/known-issues.html]
+	at at.forsyte.apalache.tla.bmcmt.rules.IntDotDotRule.getRange(IntDotDotRule.scala:55)
+	at at.forsyte.apalache.tla.bmcmt.rules.IntDotDotRule.apply(IntDotDotRule.scala:34)
+	at at.forsyte.apalache.tla.bmcmt.SymbStateRewriterImpl.rewriteOnce(SymbStateRewriterImpl.scala:357)
+	at at.forsyte.apalache.tla.bmcmt.SymbStateRewriterImpl.doRecursive$1(SymbStateRewriterImpl.scala:390)
+	at at.forsyte.apalache.tla.bmcmt.SymbStateRewriterImpl.rewriteUntilDone(SymbStateRewriterImpl.scala:424)
+	at at.forsyte.apalache.tla.bmcmt.rules.AssignmentRule.apply(AssignmentRule.scala:37)
+	at at.forsyte.apalache.tla.bmcmt.SymbStateRewriterImpl.rewriteOnce(SymbStateRewriterImpl.scala:357)
+	at at.forsyte.apalache.tla.bmcmt.SymbStateRewriterImpl.doRecursive$1(SymbStateRewriterImpl.scala:390)
+	at at.forsyte.apalache.tla.bmcmt.SymbStateRewriterImpl.rewriteUntilDone(SymbStateRewriterImpl.scala:424)
+	at at.forsyte.apalache.tla.bmcmt.rules.AndRule.mapArg$1(AndRule.scala:62)
+	at at.forsyte.apalache.tla.bmcmt.rules.AndRule.$anonfun$apply$2(AndRule.scala:66)
+	at scala.collection.immutable.List.map(List.scala:240)
+	at scala.collection.immutable.List.map(List.scala:79)
+	at at.forsyte.apalache.tla.bmcmt.rules.AndRule.apply(AndRule.scala:66)
+	at at.forsyte.apalache.tla.bmcmt.SymbStateRewriterImpl.rewriteOnce(SymbStateRewriterImpl.scala:357)
+	at at.forsyte.apalache.tla.bmcmt.SymbStateRewriterImpl.doRecursive$1(SymbStateRewriterImpl.scala:390)
+	at at.forsyte.apalache.tla.bmcmt.SymbStateRewriterImpl.rewriteUntilDone(SymbStateRewriterImpl.scala:424)
+	at at.forsyte.apalache.tla.bmcmt.trex.TransitionExecutorImpl.prepareTransition(TransitionExecutorImpl.scala:107)
+	at at.forsyte.apalache.tla.bmcmt.trex.FilteredTransitionExecutor.prepareTransition(FilteredTransitionExecutor.scala:48)
+	at at.forsyte.apalache.tla.bmcmt.trex.ConstrainedTransitionExecutor.prepareTransition(ConstrainedTransitionExecutor.scala:98)
+	at at.forsyte.apalache.tla.bmcmt.SeqModelChecker.$anonfun$prepareTransitionsAndCheckInvariants$5(SeqModelChecker.scala:219)
+	at scala.runtime.java8.JFunction1$mcVI$sp.apply(JFunction1$mcVI$sp.scala:18)
+	at scala.collection.immutable.Range.foreach(Range.scala:256)
+	at at.forsyte.apalache.tla.bmcmt.SeqModelChecker.prepareTransitionsAndCheckInvariants(SeqModelChecker.scala:213)
+	at at.forsyte.apalache.tla.bmcmt.SeqModelChecker.makeStep(SeqModelChecker.scala:125)
+	at at.forsyte.apalache.tla.bmcmt.SeqModelChecker.run(SeqModelChecker.scala:63)
+	at at.forsyte.apalache.tla.bmcmt.passes.BoundedCheckerPassImpl.runIncrementalChecker(BoundedCheckerPassImpl.scala:177)
+	at at.forsyte.apalache.tla.bmcmt.passes.BoundedCheckerPassImpl.execute(BoundedCheckerPassImpl.scala:129)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.exec(PassChainExecutor.scala:70)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.$anonfun$runPassOnModule$3(PassChainExecutor.scala:59)
+	at scala.util.Either.flatMap(Either.scala:360)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.$anonfun$runPassOnModule$1(PassChainExecutor.scala:57)
+	at scala.collection.LinearSeqOps.foldLeft(LinearSeq.scala:183)
+	at scala.collection.LinearSeqOps.foldLeft$(LinearSeq.scala:179)
+	at scala.collection.immutable.List.foldLeft(List.scala:79)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.runOnPasses(PassChainExecutor.scala:50)
+	at at.forsyte.apalache.infra.passes.PassChainExecutor.run(PassChainExecutor.scala:41)
+	at at.forsyte.apalache.tla.tooling.opt.CheckCmd.$anonfun$run$1(CheckCmd.scala:195)
+	at at.forsyte.apalache.tla.tooling.opt.ApalacheCommand.runWithOptions(ApalacheCommand.scala:190)
+	at at.forsyte.apalache.tla.tooling.opt.CheckCmd.run(CheckCmd.scala:191)
+	at at.forsyte.apalache.tla.Tool$.runCommand(Tool.scala:169)
+	at at.forsyte.apalache.tla.Tool$.runInScope(Tool.scala:148)
+	at at.forsyte.apalache.tla.Tool$.$anonfun$run$1(Tool.scala:102)
+	at scala.runtime.java8.JFunction0$mcI$sp.apply(JFunction0$mcI$sp.scala:17)
+	at at.forsyte.apalache.io.OutputManager$.$anonfun$withState$1(OutputManager.scala:280)
+	at java.base/jdk.internal.vm.ScopedValueContainer.runWithoutScope(ScopedValueContainer.java:112)
+	at java.base/jdk.internal.vm.ScopedValueContainer.run(ScopedValueContainer.java:98)
+	at java.base/java.lang.ScopedValue$Carrier.run(ScopedValue.java:468)
+	at at.forsyte.apalache.io.OutputManager$.at$forsyte$apalache$io$OutputManager$$withState(OutputManager.scala:280)
+	at at.forsyte.apalache.io.OutputManager$Scope.run(OutputManager.scala:253)
+	at at.forsyte.apalache.io.OutputManager$.withScope(OutputManager.scala:259)
+	at at.forsyte.apalache.tla.Tool$.run(Tool.scala:102)
+	at at.forsyte.apalache.tla.Tool$.main(Tool.scala:38)
+	at at.forsyte.apalache.tla.Tool.main(Tool.scala)
+2026-08-24T14:11:01,806 [main] ERROR a.f.a.t.Tool$ - sync_scheduler.tla:113:20-113:25: Input error (see the manual): Expected a constant integer range in [ .. ], found 1..MaxBlock. This is a known issue: [https://apalache-mc.org/docs/apalache/known-issues.html]
+2026-08-24T14:11:01,806 [main] INFO  a.f.a.t.Tool$ - It took me 0 days  0 hours  0 min  2 sec
+2026-08-24T14:11:01,806 [main] INFO  a.f.a.t.Tool$ - Total time: 2.245 sec

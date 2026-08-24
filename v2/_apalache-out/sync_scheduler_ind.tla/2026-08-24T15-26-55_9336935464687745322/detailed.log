@@ -1,0 +1,173 @@
+2026-08-24T15:26:55,784 [main] INFO  a.f.a.t.Tool$ - # APALACHE version: 0.62.1 | build: a321771
+2026-08-24T15:26:55,786 [main] INFO  a.f.a.i.c.ApalacheConfigResolver$ -   > ind4_tmp.cfg: Loading TLC configuration
+2026-08-24T15:26:55,822 [main] INFO  a.f.a.i.c.ApalacheConfigResolver$ -   > Using next predicate(s) Next from the TLC config
+2026-08-24T15:26:55,823 [main] WARN  a.f.a.t.t.o.CheckCmd - checker.init overrides the value from the TLC configuration.
+2026-08-24T15:26:55,823 [main] INFO  a.f.a.t.t.o.CheckCmd - Tuning: 
+2026-08-24T15:26:55,936 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #0: SanyParser
+2026-08-24T15:26:56,134 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #0: SanyParser [OK]
+2026-08-24T15:26:56,134 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #1: TypeCheckerSnowcat
+2026-08-24T15:26:56,134 [main] INFO  a.f.a.t.p.t.EtcTypeCheckerPassImpl -  > Running Snowcat .::.
+2026-08-24T15:26:56,440 [main] INFO  a.f.a.t.p.t.EtcTypeCheckerPassImpl -  > Your types are purrfect!
+2026-08-24T15:26:56,441 [main] INFO  a.f.a.t.p.t.EtcTypeCheckerPassImpl -  > All expressions are typed
+2026-08-24T15:26:56,441 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #1: TypeCheckerSnowcat [OK]
+2026-08-24T15:26:56,441 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #2: ConfigurationPass
+2026-08-24T15:26:56,539 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > ind4_tmp.cfg: found INVARIANTS: IndInv
+2026-08-24T15:26:56,541 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > Set the initialization predicate to IndInit
+2026-08-24T15:26:56,541 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > Set the transition predicate to Next
+2026-08-24T15:26:56,541 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > Set the constant initialization predicate to CInitFixed
+2026-08-24T15:26:56,541 [main] INFO  a.f.a.t.p.p.ConfigurationPassImpl -   > Set an invariant to IndInv
+2026-08-24T15:26:56,543 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #2: ConfigurationPass [OK]
+2026-08-24T15:26:56,543 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #3: DesugarerPass
+2026-08-24T15:26:56,543 [main] INFO  a.f.a.t.p.p.DesugarerPassImpl -   > Desugaring...
+2026-08-24T15:26:56,553 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #3: DesugarerPass [OK]
+2026-08-24T15:26:56,553 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #4: InlinePass
+2026-08-24T15:26:56,554 [main] INFO  a.f.a.t.p.p.InlinePassImpl - Leaving only relevant operators: CInitFixed, CInitFixedPrimed, IndInit, IndInitPrimed, IndInv, Next
+2026-08-24T15:26:56,597 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #4: InlinePass [OK]
+2026-08-24T15:26:56,597 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #5: TemporalPass
+2026-08-24T15:26:56,597 [main] INFO  a.f.a.t.p.p.TemporalPassImpl -   > Rewriting temporal operators...
+2026-08-24T15:26:56,597 [main] INFO  a.f.a.t.p.p.TemporalPassImpl -   > No temporal property specified, nothing to encode
+2026-08-24T15:26:56,597 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #5: TemporalPass [OK]
+2026-08-24T15:26:56,597 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #6: InlinePass
+2026-08-24T15:26:56,597 [main] INFO  a.f.a.t.p.p.InlinePassImpl - Leaving only relevant operators: CInitFixed, CInitFixedPrimed, IndInit, IndInitPrimed, IndInv, Next
+2026-08-24T15:26:56,608 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #6: InlinePass [OK]
+2026-08-24T15:26:56,608 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #7: PrimingPass
+2026-08-24T15:26:56,609 [main] INFO  a.f.a.t.p.a.PrimingPassImpl -   > Introducing CInitFixedPrimed for CInitFixed'
+2026-08-24T15:26:56,610 [main] INFO  a.f.a.t.p.a.PrimingPassImpl -   > Introducing IndInitPrimed for IndInit'
+2026-08-24T15:26:56,610 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #7: PrimingPass [OK]
+2026-08-24T15:26:56,611 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #8: VCGen
+2026-08-24T15:26:56,611 [main] INFO  a.f.a.t.b.p.VCGenPassImpl -   > Producing verification conditions from the invariant IndInv
+2026-08-24T15:26:56,613 [main] INFO  a.f.a.t.b.VCGenerator -   > VCGen produced 18 verification condition(s)
+2026-08-24T15:26:56,615 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #8: VCGen [OK]
+2026-08-24T15:26:56,615 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #9: PreprocessingPass
+2026-08-24T15:26:56,615 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > Before preprocessing: unique renaming
+2026-08-24T15:26:56,618 [main] INFO  a.f.a.t.p.p.PreproPassImpl -  > Applying standard transformations:
+2026-08-24T15:26:56,618 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > PrimePropagation
+2026-08-24T15:26:56,620 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > Desugarer
+2026-08-24T15:26:56,629 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > UniqueRenamer
+2026-08-24T15:26:56,635 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > Normalizer
+2026-08-24T15:26:56,639 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > SetMembershipSimplifier
+2026-08-24T15:26:56,642 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > Keramelizer
+2026-08-24T15:26:56,653 [main] INFO  a.f.a.t.p.p.PreproPassImpl -   > After preprocessing: UniqueRenamer
+2026-08-24T15:26:56,661 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #9: PreprocessingPass [OK]
+2026-08-24T15:26:56,661 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #10: TransitionFinderPass
+2026-08-24T15:26:56,680 [main] INFO  a.f.a.t.p.a.TransitionPassImpl -   > Found 1 initializing transitions
+2026-08-24T15:26:56,686 [main] INFO  a.f.a.t.p.a.TransitionPassImpl -   > Found 8 transitions
+2026-08-24T15:26:56,687 [main] INFO  a.f.a.t.p.a.TransitionPassImpl -   > Found constant initializer CInitFixed
+2026-08-24T15:26:56,688 [main] INFO  a.f.a.t.p.a.TransitionPassImpl -   > Applying unique renaming
+2026-08-24T15:26:56,692 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #10: TransitionFinderPass [OK]
+2026-08-24T15:26:56,692 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #11: OptimizationPass
+2026-08-24T15:26:56,694 [main] INFO  a.f.a.t.p.p.OptPassImpl -  > Applying optimizations:
+2026-08-24T15:26:56,695 [main] INFO  a.f.a.t.p.p.OptPassImpl -   > ConstSimplifier
+2026-08-24T15:26:56,703 [main] INFO  a.f.a.t.p.p.OptPassImpl -   > ExprOptimizer
+2026-08-24T15:26:56,706 [main] INFO  a.f.a.t.p.p.OptPassImpl -   > SetMembershipSimplifier
+2026-08-24T15:26:56,707 [main] INFO  a.f.a.t.p.p.OptPassImpl -   > ConstSimplifier
+2026-08-24T15:26:56,715 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #11: OptimizationPass [OK]
+2026-08-24T15:26:56,715 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #12: AnalysisPass
+2026-08-24T15:26:56,716 [main] INFO  a.f.a.t.b.p.AnalysisPassImpl -  > Marking skolemizable existentials and sets to be expanded...
+2026-08-24T15:26:56,716 [main] INFO  a.f.a.t.b.p.AnalysisPassImpl -   > Skolemization
+2026-08-24T15:26:56,717 [main] INFO  a.f.a.t.b.p.AnalysisPassImpl -   > Expansion
+2026-08-24T15:26:56,719 [main] INFO  a.f.a.t.b.p.AnalysisPassImpl -   > Remove unused let-in defs
+2026-08-24T15:26:56,722 [main] INFO  a.f.a.t.b.p.AnalysisPassImpl -  > Running analyzers...
+2026-08-24T15:26:56,724 [main] INFO  a.f.a.t.b.p.AnalysisPassImpl -   > Introduced expression grades
+2026-08-24T15:26:56,724 [main] DEBUG a.f.a.i.p.PassChainExecutor - PASS #12: AnalysisPass [OK]
+2026-08-24T15:26:56,724 [main] INFO  a.f.a.i.p.PassChainExecutor - PASS #13: BoundedChecker
+2026-08-24T15:26:56,733 [main] DEBUG a.f.a.t.b.s.Z3SolverContext - Creating Z3 solver context 0
+2026-08-24T15:26:58,038 [main] DEBUG a.f.a.t.b.t.TransitionExecutorImpl - Initializing CONSTANTS
+2026-08-24T15:26:58,067 [main] DEBUG a.f.a.t.b.t.TransitionExecutorImpl - Step #0, transition #0
+2026-08-24T15:26:58,067 [main] DEBUG a.f.a.t.b.t.TransitionExecutorImpl - Translating to SMT
+2026-08-24T15:26:59,738 [main] DEBUG a.f.a.t.b.SeqModelChecker - Step 0: Transition #0. Is it enabled?
+2026-08-24T15:26:59,933 [main] DEBUG a.f.a.t.b.SeqModelChecker - Step 0: Transition #0 is enabled
+2026-08-24T15:26:59,934 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: Checking 18 state invariants
+2026-08-24T15:26:59,934 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 0
+2026-08-24T15:26:59,948 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 0 holds.
+2026-08-24T15:26:59,953 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 1
+2026-08-24T15:26:59,965 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 1 holds.
+2026-08-24T15:26:59,968 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 2
+2026-08-24T15:26:59,970 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 2 holds.
+2026-08-24T15:26:59,972 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 3
+2026-08-24T15:26:59,990 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 3 holds.
+2026-08-24T15:26:59,991 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 4
+2026-08-24T15:27:00,028 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 4 holds.
+2026-08-24T15:27:00,029 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 5
+2026-08-24T15:27:00,031 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 5 holds.
+2026-08-24T15:27:00,032 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 6
+2026-08-24T15:27:00,032 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 6 holds.
+2026-08-24T15:27:00,033 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 7
+2026-08-24T15:27:19,629 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 7 holds.
+2026-08-24T15:27:19,631 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 8
+2026-08-24T15:27:24,744 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 8 holds.
+2026-08-24T15:27:24,746 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 9
+2026-08-24T15:27:24,785 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 9 holds.
+2026-08-24T15:27:24,786 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 10
+2026-08-24T15:27:24,790 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 10 holds.
+2026-08-24T15:27:24,791 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 11
+2026-08-24T15:27:24,912 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 11 holds.
+2026-08-24T15:27:24,913 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 12
+2026-08-24T15:27:24,919 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 12 holds.
+2026-08-24T15:27:24,920 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 13
+2026-08-24T15:27:25,789 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 13 holds.
+2026-08-24T15:27:25,791 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 14
+2026-08-24T15:27:45,097 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 14 holds.
+2026-08-24T15:27:45,099 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 15
+2026-08-24T15:27:45,103 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 15 holds.
+2026-08-24T15:27:45,104 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 16
+2026-08-24T15:27:45,249 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 16 holds.
+2026-08-24T15:27:45,250 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 0: Checking state invariant 17
+2026-08-24T15:27:45,315 [main] INFO  a.f.a.t.b.SeqModelChecker - State 0: state invariant 17 holds.
+2026-08-24T15:27:45,316 [main] INFO  a.f.a.t.b.t.TransitionExecutorImpl - Step 0: picking a transition out of 1 transition(s)
+2026-08-24T15:27:45,317 [main] DEBUG a.f.a.t.b.t.TransitionExecutorImpl - Step #1, transition #0
+2026-08-24T15:27:45,317 [main] DEBUG a.f.a.t.b.t.TransitionExecutorImpl - Translating to SMT
+2026-08-24T15:27:45,357 [main] DEBUG a.f.a.t.b.SeqModelChecker - Step 1: Transition #0. Is it enabled?
+2026-08-24T15:27:45,385 [main] DEBUG a.f.a.t.b.SeqModelChecker - Step 1: Transition #0 is enabled
+2026-08-24T15:27:45,386 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: Checking 3 state invariants
+2026-08-24T15:27:45,386 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 1
+2026-08-24T15:27:45,389 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 1 holds.
+2026-08-24T15:27:45,390 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 10
+2026-08-24T15:27:45,405 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 10 holds.
+2026-08-24T15:27:45,406 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 11
+2026-08-24T15:27:45,450 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 11 holds.
+2026-08-24T15:27:45,451 [main] DEBUG a.f.a.t.b.t.TransitionExecutorImpl - Step #1, transition #1
+2026-08-24T15:27:45,451 [main] DEBUG a.f.a.t.b.t.TransitionExecutorImpl - Translating to SMT
+2026-08-24T15:27:45,564 [main] DEBUG a.f.a.t.b.SeqModelChecker - Step 1: Transition #1. Is it enabled?
+2026-08-24T15:27:45,636 [main] DEBUG a.f.a.t.b.SeqModelChecker - Step 1: Transition #1 is enabled
+2026-08-24T15:27:45,636 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: Checking 12 state invariants
+2026-08-24T15:27:45,636 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 0
+2026-08-24T15:27:45,649 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 0 holds.
+2026-08-24T15:27:45,650 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 2
+2026-08-24T15:27:45,664 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 2 holds.
+2026-08-24T15:27:45,665 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 3
+2026-08-24T15:27:45,696 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 3 holds.
+2026-08-24T15:27:45,697 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 4
+2026-08-24T15:27:45,717 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 4 holds.
+2026-08-24T15:27:45,718 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 7
+2026-08-24T15:29:02,940 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 7 holds.
+2026-08-24T15:29:02,943 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 8
+2026-08-24T15:29:16,954 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 8 holds.
+2026-08-24T15:29:16,956 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 9
+2026-08-24T15:29:17,128 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 9 holds.
+2026-08-24T15:29:17,129 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 10
+2026-08-24T15:29:17,135 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 10 holds.
+2026-08-24T15:29:17,136 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 11
+2026-08-24T15:29:17,200 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 11 holds.
+2026-08-24T15:29:17,201 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 12
+2026-08-24T15:29:17,272 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 12 holds.
+2026-08-24T15:29:17,273 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 13
+2026-08-24T15:29:30,641 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 13 holds.
+2026-08-24T15:29:30,643 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 14
+2026-08-24T15:33:07,049 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 14 holds.
+2026-08-24T15:33:07,053 [main] DEBUG a.f.a.t.b.t.TransitionExecutorImpl - Step #1, transition #2
+2026-08-24T15:33:07,053 [main] DEBUG a.f.a.t.b.t.TransitionExecutorImpl - Translating to SMT
+2026-08-24T15:33:07,189 [main] DEBUG a.f.a.t.b.SeqModelChecker - Step 1: Transition #2. Is it enabled?
+2026-08-24T15:33:07,394 [main] DEBUG a.f.a.t.b.SeqModelChecker - Step 1: Transition #2 is enabled
+2026-08-24T15:33:07,394 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: Checking 11 state invariants
+2026-08-24T15:33:07,394 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 1
+2026-08-24T15:33:07,399 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 1 holds.
+2026-08-24T15:33:07,400 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 2
+2026-08-24T15:33:07,471 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 2 holds.
+2026-08-24T15:33:07,472 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 3
+2026-08-24T15:33:07,520 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 3 holds.
+2026-08-24T15:33:07,521 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 4
+2026-08-24T15:33:07,563 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 4 holds.
+2026-08-24T15:33:07,564 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 7
+2026-08-24T15:36:04,292 [main] INFO  a.f.a.t.b.SeqModelChecker - State 1: state invariant 7 holds.
+2026-08-24T15:36:04,296 [main] DEBUG a.f.a.t.b.SeqModelChecker - State 1: Checking state invariant 8

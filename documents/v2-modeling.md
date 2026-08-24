@@ -548,3 +548,49 @@ when the drop happened, because the stale negotiated version belongs to the
 connection (fixed at handshake), not to the peer. A one-line note in the
 draft ("a node MUST NOT ban an address merely for advertising an obsolete
 protocol version") would foreclose it.
+
+## Addendum — refinement and symbolic checking
+
+### The common abstraction
+
+`v2/protocol.tla` and `v2/sync_scheduler.tla` model the same activity at
+different altitudes; `v2/downloader.tla` is the pipeline object they share:
+verified blocks, in-flight blocks, and four transitions (request, deliver,
+requeue, extend). Both models refine it, TLC-checked:
+
+| Check | Mapping | Result |
+|---|---|---|
+| `sched_refinement.cfg` | registry, retries, peer identities forgotten; NotFound/Refused/Truncated/Timeout all map to Requeue | 339 states, passes |
+| `refinement.cfg` | one pipeline per peer; in-flight = heights in get-blocks request/response records still queued on streams; serve steps stutter (the height moves between records without leaving flight); mining maps to Extend | 327,367 states, complete, passes |
+
+The refinement is safety-only and deliberately so: the buggy scheduler
+configurations refine the downloader too — the stall bugs are liveness
+bugs, invisible at this altitude. A mutation test (mapping headers records
+into the in-flight set) fails the check, confirming it constrains the
+mapping. Checked with `MaxBlocksPerRequest = 1` so one concrete step is one
+abstract step.
+
+### Apalache: the dual projection
+
+TLC explores every reachable state at one parameter valuation. Apalache
+(`v2/sync_scheduler_ind.tla`, Apalache 0.62.1) checks the dual: bounded
+depth, all parameter valuations at once — `LagTip`, `MaxRetries`,
+`UnresponsiveLimit` symbolic over Nat.
+
+| Check | Result |
+|---|---|
+| symbolic base, fixed behaviour (`--length=0`) | NoError, seconds |
+| symbolic base, ALL switches symbolic (`--length=0`) | NoError, seconds |
+| bounded exploration to depth 8, fixed behaviour | NoError, ~3 minutes |
+
+With symbolic `MaxRetries` runs can be arbitrarily long, so no finite
+depth is complete; the result is "no violation within 8 steps for any
+parameter valuation". A full inductive proof (arbitrary `Gen` states, one
+`Next` step) was attempted and is impractical with current Apalache: the
+step check ran over three hours without a verdict at `MaxBlock = 4`. Two
+tool limitations found on the way, recorded for reuse: symbolic integer
+ranges (`1..N` with symbolic `N`) are unsupported anywhere, and `@type`
+annotations attach correctly only in the single `CONSTANTS`-block
+declaration style. Apalache runs are local-only — SMT solve times are too
+machine-dependent for CI — with the module, config and exact commands in
+the repository.

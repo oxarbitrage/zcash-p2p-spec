@@ -47,16 +47,37 @@ See ../documents/v2-modeling.md for the full write-up.
 *)
 EXTENDS Naturals, FiniteSets
 
-CONSTANT Peers                    \* set of peer ids
-CONSTANT MaxBlock                 \* blocks to download are 1..MaxBlock
-CONSTANT LaggingPeers             \* peers that hold only blocks 1..LagTip
-CONSTANT LagTip                   \* chain height of a lagging peer (< MaxBlock)
-CONSTANT MaxRetries               \* bound on re-queue attempts per block after a notfound
-CONSTANT UnresponsiveLimit        \* consecutive timeouts before a peer is disconnected
-CONSTANT TreatRefusedAsMissing    \* TRUE treats a REFUSED as a notfound (buggy)
-CONSTANT TreatTruncatedAsMissing  \* TRUE treats an unanswered entry as a notfound (buggy)
-CONSTANT BuggyTimeout             \* TRUE treats a timeout as a notfound (legacy bug)
-CONSTANT Redial                   \* TRUE redials disconnected peers
+CONSTANTS
+    \* set of peer ids
+    \* @type: Set(Str);
+    Peers,
+    \* blocks to download are 1..MaxBlock
+    \* @type: Int;
+    MaxBlock,
+    \* peers that hold only blocks 1..LagTip
+    \* @type: Set(Str);
+    LaggingPeers,
+    \* chain height of a lagging peer (< MaxBlock)
+    \* @type: Int;
+    LagTip,
+    \* bound on re-queue attempts per block after a notfound
+    \* @type: Int;
+    MaxRetries,
+    \* consecutive timeouts before a peer is disconnected
+    \* @type: Int;
+    UnresponsiveLimit,
+    \* TRUE treats a REFUSED as a notfound (buggy)
+    \* @type: Bool;
+    TreatRefusedAsMissing,
+    \* TRUE treats an unanswered entry as a notfound (buggy)
+    \* @type: Bool;
+    TreatTruncatedAsMissing,
+    \* TRUE treats a timeout as a notfound (legacy bug)
+    \* @type: Bool;
+    BuggyTimeout,
+    \* TRUE redials disconnected peers
+    \* @type: Bool;
+    Redial
 
 Blocks == 1..MaxBlock
 NONE == "none"   \* sentinel for "no peer"; must not be a member of Peers
@@ -68,12 +89,19 @@ PeerTip(p) == IF p \in LaggingPeers THEN LagTip ELSE MaxBlock
 Holds(p, b) == b <= PeerTip(p)
 
 VARIABLES
+    \* @type: Set(Int);
     verified,   \* subset of Blocks downloaded and verified (the frontier)
+    \* @type: Set(Int);
     pending,    \* subset of Blocks the scheduler still wants and may request
+    \* @type: Int -> Str;
     inflight,   \* [ Blocks -> Peers \cup {NONE} ] peer a block is requested from
+    \* @type: Str -> (Int -> Str);
     avail,      \* [ Peers -> [ Blocks -> {"has","missing","unknown"} ] ] registry
+    \* @type: Int -> Int;
     retries,    \* [ Blocks -> 0..MaxRetries ] re-queue attempts used
+    \* @type: Str -> Int;
     timeouts,   \* [ Peers -> 0..UnresponsiveLimit ] consecutive unanswered timeouts
+    \* @type: Str -> Bool;
     connected   \* [ Peers -> BOOLEAN ] FALSE once disconnected as unresponsive
 
 vars == << verified, pending, inflight, avail, retries, timeouts, connected >>

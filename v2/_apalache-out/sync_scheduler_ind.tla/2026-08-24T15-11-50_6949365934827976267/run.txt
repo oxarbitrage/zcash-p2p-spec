@@ -1,0 +1,1 @@
+ check --config=sync_scheduler_ind.cfg --cinit=CInitAny --init=IndInitAny --inv=IndInvAny --length=1 sync_scheduler_ind.tla

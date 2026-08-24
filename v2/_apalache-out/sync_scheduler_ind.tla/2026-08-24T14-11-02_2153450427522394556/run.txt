@@ -1,0 +1,1 @@
+ check --cinit=CInitFixed --init=IndInv --inv=IndInv --length=1 sync_scheduler_ind.tla
