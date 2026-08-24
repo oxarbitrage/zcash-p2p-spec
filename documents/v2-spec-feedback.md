@@ -220,3 +220,21 @@ Related: re-announcing a block on a replacement announcement stream (item
 penalty MUST NOT is confirmed as written (`v2/compact_penalize.cfg`), and
 the draft's consensus claim for short-ID collisions is machine-checked
 (`WrongTxNeverAccepted`).
+
+## 11. Epoch enforcement confirmed; suggest forbidding bans on OBSOLETE
+
+Modeled in `v2/epoch.tla`. Keying epoch enforcement on the negotiated
+version (never the peer's chain state) is confirmed sound: upgraded peers
+are never dropped however divergently they observe activation, and a
+dropped old-version peer that upgrades reconnects and catches up.
+
+One suggested addition: nothing currently says the `OBSOLETE` disconnect
+must not be treated as ban-worthy. An implementation that bans the
+addresses it drops at activation strands peers — provably including peers
+whose software was already upgraded when the drop fired, since the stale
+negotiated version belongs to the connection, not the peer
+(`v2/epoch_ban.cfg`, 3-state counterexample). Suggest, in "Network Upgrade
+Epoch Enforcement" or "Misbehavior and Banning":
+
+> A node MUST NOT ban an address merely because a peer at that address
+> advertised an obsolete protocol version.

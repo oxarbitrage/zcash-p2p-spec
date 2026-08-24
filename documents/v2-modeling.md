@@ -9,8 +9,8 @@ still moving; section names below refer to that revision. The draft's
 not yet been updated for the new protocol — this document describes that
 update, phase by phase.
 
-All four phases plus the simultaneous-dial, get-mempool, Byzantine and
-compact-block addenda are complete; this document describes them. Reference
+All four phases plus the simultaneous-dial, get-mempool, Byzantine,
+compact-block and epoch addenda are complete; this document describes them. Reference
 implementation consulted: Zebra's five-PR draft stack
 [#11273](https://github.com/ZcashFoundation/zebra/pull/11273) –
 [#11277](https://github.com/ZcashFoundation/zebra/pull/11277)
@@ -518,3 +518,33 @@ penalty MUST NOT, by contrast, is confirmed load-bearing exactly as
 written. `WrongTxNeverAccepted` also machine-checks the draft's own
 consensus claim: a wrongly matched transaction dies at the merkle check and
 never reaches an accepted block.
+
+## Addendum — epoch enforcement (confirmation, with one warning)
+
+`v2/epoch.tla` models network-upgrade activation ("Network Upgrade Epoch
+Enforcement"): activation happens at a block height, so a synced node and a
+lagging node observe it at different times; each node in the new epoch MUST
+drop connections whose negotiated version is below the new minimum, with
+`OBSOLETE`.
+
+| Config | Scenario | Result |
+|---|---|---|
+| `epoch.cfg` | both peers upgraded, one lagging across the activation height | 4 states; the connection is never touched and the laggard catches up |
+| `epoch_upgrade.cfg` | old-version peer dropped at activation, upgrades, reconnects | 28 states; passes |
+| `epoch_ban.cfg` | the `OBSOLETE` drop also bans the address | `CatchesUp` violated in 3 states |
+
+**Confirmed:** keying enforcement on the handshake-negotiated version — and
+never on the peer's chain state — makes divergent activation observation
+harmless: an upgraded node arbitrarily far behind the activation height is
+never dropped and syncs straight across the boundary. The rule is well
+designed.
+
+**Warning (implementation-level):** `OBSOLETE` is a close code, not a
+misbehavior verdict — being unupgraded is not a provable violation, and the
+draft's banning section reserves bans for those. An implementation that
+routes the `OBSOLETE` drop through its ban machinery strands peers: in the
+minimal counterexample the banned peer had *already upgraded its software*
+when the drop happened, because the stale negotiated version belongs to the
+connection (fixed at handshake), not to the peer. A one-line note in the
+draft ("a node MUST NOT ban an address merely for advertising an obsolete
+protocol version") would foreclose it.

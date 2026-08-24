@@ -233,6 +233,26 @@ is the only guaranteed delivery path once a peer's SHORTID view goes stale —
 a SHOULD doing a MUST's job. `WrongTxNeverAccepted` confirms the draft's
 claim that short-ID collisions cannot weaken consensus.
 
+### v2 epoch enforcement
+
+[`v2/epoch.tla`](v2/epoch.tla) checks network-upgrade activation: activation
+happens at a block height, so nodes observe it at different times, and each
+node MUST drop peers whose negotiated version is below the new epoch's
+minimum, with `OBSOLETE`.
+
+| Config | Scenario | Checks | Expected |
+|---|---|---|---|
+| [`v2/epoch.cfg`](v2/epoch.cfg) | both upgraded, one lagging past activation | `UpgradedNeverDropped` + `CatchesUp` | passes |
+| [`v2/epoch_upgrade.cfg`](v2/epoch_upgrade.cfg) | old peer dropped, upgrades, reconnects | `CatchesUp` | passes |
+| [`v2/epoch_ban.cfg`](v2/epoch_ban.cfg) | the `OBSOLETE` drop also bans the address | `CatchesUp` | **violated** |
+
+Divergent activation observation is confirmed harmless — enforcement keys on
+the handshake-negotiated version, never on the peer's chain state. The
+negative config is an implementation warning: `OBSOLETE` is a close, not a
+ban; an implementation that bans on it strands peers — in the minimal trace
+the banned peer had *already upgraded* (the stale negotiated version belongs
+to the connection, not the peer).
+
 ### v2 misbehavior and banning
 
 [`v2/misbehavior.tla`](v2/misbehavior.tla) models the draft's "Misbehavior and
