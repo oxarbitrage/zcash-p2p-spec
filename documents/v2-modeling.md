@@ -10,7 +10,8 @@ not yet been updated for the new protocol — this document describes that
 update, phase by phase.
 
 All four phases plus the simultaneous-dial, get-mempool, Byzantine,
-compact-block and epoch addenda are complete; this document describes them. Reference
+compact-block, epoch, refinement and Tor-framing addenda are complete; this
+document describes them. Reference
 implementation consulted: Zebra's five-PR draft stack
 [#11273](https://github.com/ZcashFoundation/zebra/pull/11273) –
 [#11277](https://github.com/ZcashFoundation/zebra/pull/11277)
@@ -600,3 +601,56 @@ machine-dependent for CI — with the module, config and exact commands in
 the repository. (An earlier revision of this section reported the
 induction step as impractical; the long solve later completed with
 NoError, and the canary confirmed non-vacuity.)
+
+## Addendum — Tor stream framing (Findings 6 and 7)
+
+`v2/framing.tla` models the Tor transport's framing layer ("Stream
+Framing"): the stream layer re-implemented over a single ordered
+bytestream, with QUIC-style implicit stream opening and cumulative flow
+control seeded by the connection preamble. Zebra's implementation of this
+layer was removed as unreachable code (the Tor transport is blocked on a
+dependency conflict), so no running code exercises this text — the model
+is currently its only mechanical check.
+
+One sender delivers a bulk record of `Total` bytes and rotates one
+announcement stream (finish + replacement, the pattern of "Announcement
+Streams" and Finding 2), under the preamble's initial credits. Results:
+
+| Config | Result |
+|---|---|
+| `framing.cfg` (QUIC-consistent readings) | 977 states; everything passes |
+| `framing_wedge.cfg` | `BulkDelivered` violated: connection credit of 2 < record of 3, receiver grants only per complete record — permanent wedge |
+| `framing_perframe.cfg` | same credits, byte-granularity granting: passes |
+| `framing_noraise.cfg` | `ReplacementsComplete` violated: receiver never raises the stream limit, the second replacement silently never opens |
+| `framing_concurrent.cfg` | `NoHonestProtocolError` violated: concurrent-reading sender opens a replacement beyond the cumulative count, cumulative-enforcing receiver closes `PROTOCOL_ERROR` |
+
+**Finding 6 — no minimum for `initial_max_data`.** The preamble section
+mandates `initial_max_stream_data` of at least 2,228,224 bytes — a maximum
+record plus headroom — precisely so a record can always traverse a stream.
+The connection-level `initial_max_data` has no such floor. A peer
+advertising less than one record of connection credit, talking to a
+receiver that raises `MAX_DATA` at record granularity (a natural
+implementation: records are the unit of processing), wedges the
+connection forever with both peers conforming. The same floor that
+protects the per-stream credit should protect the connection credit.
+
+**Finding 7 — "concurrent" vs cumulative stream limits.** The preamble
+describes `initial_max_streams_bidi/uni` as limits "on the peer's
+CONCURRENT streams"; the framing section defines `MAX_STREAMS_*` as
+raising "the limit on the peer's CUMULATIVE count of opened streams", as
+in QUIC. Both readings are implementable and they disagree in both
+directions: a receiver that thinks concurrently never raises the limit
+(concurrency never exceeds one) and the sender's replacements silently
+stop; a sender that thinks concurrently exceeds the cumulative count and
+is disconnected as a protocol violator. QUIC itself avoids this by having
+no "concurrent" wording — the concurrency effect emerges from raising the
+cumulative limit as streams close, which is exactly what the passing
+configuration does.
+
+**Confirmation — Finding 1 is QUIC-only.** `StrictSingletonSafeHere`
+holds in every configuration: on an ordered transport the old
+announcement stream's FIN always precedes the replacement's first frame,
+so the receiver never sees two open streams of one type. The literal
+singleton rule is safe on Tor and honest-peer-fatal on QUIC — one
+plausible explanation for how the rule got written, and a reason the fix
+must live in the transport-independent sections.

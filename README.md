@@ -253,6 +253,30 @@ ban; an implementation that bans on it strands peers — in the minimal trace
 the banned peer had *already upgraded* (the stale negotiated version belongs
 to the connection, not the peer).
 
+### v2 Tor stream framing
+
+[`v2/framing.tla`](v2/framing.tla) models the Tor transport's framing layer
+— the draft's miniature QUIC over a single ordered bytestream, and the least
+implementation-tested text of the draft (Zebra's framing layer was removed
+as unreachable code). One sender delivers a bulk record and rotates an
+announcement stream under cumulative flow control.
+
+| Config | Readings | Checks | Expected |
+|---|---|---|---|
+| [`v2/framing.cfg`](v2/framing.cfg) | QUIC-consistent both sides | all | passes |
+| [`v2/framing_wedge.cfg`](v2/framing_wedge.cfg) | sub-record connection credit + record-granularity granting | `BulkDelivered` | **violated** (wedge) |
+| [`v2/framing_perframe.cfg`](v2/framing_perframe.cfg) | same credit, byte-granularity granting | all | passes |
+| [`v2/framing_noraise.cfg`](v2/framing_noraise.cfg) | receiver reads limits as concurrent | `ReplacementsComplete` | **violated** (silent stall) |
+| [`v2/framing_concurrent.cfg`](v2/framing_concurrent.cfg) | sender reads limits as concurrent | `NoHonestProtocolError` | **violated** |
+
+Two findings: the draft mandates a per-stream credit minimum that covers a
+record but **no minimum for the connection-level `initial_max_data`**, so
+two conforming peers can wedge forever; and the preamble describes the
+stream-limit fields as *concurrent* while the framing section defines them
+as *cumulative* — the two readings disagree in both directions. One
+confirmation: `StrictSingletonSafeHere` — the announcement replacement race
+(Finding 1) cannot occur on this ordered transport, only on QUIC.
+
 ### v2 misbehavior and banning
 
 [`v2/misbehavior.tla`](v2/misbehavior.tla) models the draft's "Misbehavior and

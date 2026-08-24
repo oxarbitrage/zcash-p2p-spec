@@ -238,3 +238,35 @@ Epoch Enforcement" or "Misbehavior and Banning":
 
 > A node MUST NOT ban an address merely because a peer at that address
 > advertised an obsolete protocol version.
+
+## 12. "Connection Preamble": give `initial_max_data` the same floor as
+## `initial_max_stream_data`
+
+The preamble mandates `initial_max_stream_data` >= 2,228,224 bytes so a
+maximum record can always traverse a stream — but sets no minimum for the
+connection-level `initial_max_data`. TLC (`v2/framing_wedge.cfg`) shows
+two conforming peers wedging forever: one advertises less than a record
+of connection credit, the other raises `MAX_DATA` only after processing a
+complete record. Suggest:
+
+> A node MUST allow an `initial_max_data` of at least 2,228,224 bytes.
+
+## 13. "Connection Preamble" / "Stream Framing": concurrent vs cumulative
+## stream limits
+
+The preamble describes `initial_max_streams_bidi`/`_uni` as limits "on
+the peer's concurrent ... streams"; the framing section defines
+`MAX_STREAMS_*` as raising the limit on the peer's *cumulative* count of
+opened streams (QUIC's semantics). The readings disagree in both
+directions, reproducibly (`v2/framing_noraise.cfg`: silent announcement
+stall; `v2/framing_concurrent.cfg`: honest peer disconnected with
+`PROTOCOL_ERROR`). Suggest rewording the preamble fields as "initial
+limit on the peer's cumulative count of opened ... streams", plus a
+sentence noting that a receiver maintains an effective concurrency limit
+by raising the cumulative limit as streams close.
+
+Also relevant to item 1: the model confirms the announcement-replacement
+race cannot occur on the Tor transport (the pipe is ordered, FIN precedes
+the replacement), so the singleton rule's literal reading is safe on Tor
+and fails only on QUIC — the fix belongs in the transport-independent
+sections, not the transport ones.

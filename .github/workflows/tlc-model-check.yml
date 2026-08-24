@@ -283,6 +283,42 @@ jobs:
           echo "OK: obsolete-ban stranding reproduced as expected"
         fi
 
+    - name: Tor framing with QUIC-consistent readings must verify
+      working-directory: v2
+      run: |
+        timeout 120 java -jar ../tla2tools.jar -config framing.cfg framing.tla
+        timeout 120 java -jar ../tla2tools.jar -config framing_perframe.cfg framing.tla
+
+    - name: Sub-record connection credit must wedge a record-granularity receiver
+      working-directory: v2
+      run: |
+        if timeout 120 java -jar ../tla2tools.jar -config framing_wedge.cfg framing.tla; then
+          echo "ERROR: expected BulkDelivered to be violated, but TLC found no error"
+          exit 1
+        else
+          echo "OK: flow-control wedge reproduced as expected"
+        fi
+
+    - name: A concurrent-reading receiver must silently stall replacements
+      working-directory: v2
+      run: |
+        if timeout 120 java -jar ../tla2tools.jar -config framing_noraise.cfg framing.tla; then
+          echo "ERROR: expected ReplacementsComplete to be violated, but TLC found no error"
+          exit 1
+        else
+          echo "OK: silent stream-limit stall reproduced as expected"
+        fi
+
+    - name: A concurrent-reading sender must be disconnected by a cumulative receiver
+      working-directory: v2
+      run: |
+        if timeout 120 java -jar ../tla2tools.jar -config framing_concurrent.cfg framing.tla; then
+          echo "ERROR: expected NoHonestProtocolError to be violated, but TLC found no error"
+          exit 1
+        else
+          echo "OK: concurrent/cumulative divergence reproduced as expected"
+        fi
+
     - name: Misbehavior fixed behaviour must verify
       working-directory: v2
       run: |
