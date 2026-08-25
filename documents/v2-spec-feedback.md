@@ -1,7 +1,20 @@
-# Draft feedback for zcash/zips#1344 from the TLA+ model
+# Feedback for zcash/zips#1344 from the TLA+ model
 
-Against draft revision `a3f4fa2a`. Each item has a reproducible TLC trace in
-this repository (`v2/`). Wording proposals are suggestions only.
+**Snapshot:** against draft revision `a3f4fa2a` (the revision Zebra's
+`SPEC-CONFORMANCE.md` pins), as of 2026-08-25. If the draft has moved,
+section names and line references may have shifted; the configs named
+below re-check each item and are run by this repository's CI on every push.
+
+Each item has a reproducible TLC counterexample in `v2/`
+(`cd v2 && java -jar ../tla2tools.jar -config <cfg> <module>.tla`; the
+named "strict"/"buggy" configs are expected to fail — they are the
+counterexamples — and the matching tolerant/fixed configs pass). The
+modeling rationale for every item is in [`v2-modeling.md`](v2-modeling.md).
+Wording proposals are suggestions only.
+
+Summary — items proposing a change: 1, 2, 7, 8, 10, 11, 12, 13, 14, and 5
+(addressed to the sync draft / scheduler rather than this ZIP). Items 3,
+4, 6, 9 are confirmations that the text holds as written.
 
 ## 1. "Announcement Streams": replacement streams race with the singleton rule
 
