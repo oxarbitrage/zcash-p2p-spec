@@ -6,7 +6,7 @@ of truth; this comment only lists them. Edit freely, then paste.
 
 Following the "Formal Model" section's pointer to
 [zcash-p2p-spec](https://github.com/oxarbitrage/zcash-p2p-spec): the TLA+
-model has been extended to this draft (revision `a3f4fa2a`). It covers the
+model has been extended to this draft (revision `65ec4f74`). It covers the
 stream layer, handshake, announcement and request streams, headers-first
 sync, the download scheduler, misbehavior and banning, connection
 management, `get-mempool`, compact block relay, epoch enforcement, the Tor
@@ -35,17 +35,28 @@ In brief:
    `v2/dial_outbound.cfg`, `v2/dial_inbound.cfg`.
 4. **Compact-block reconstruction fallback is a SHOULD doing a MUST's
    job**: after nonce churn plus a lost re-announcement it is the only
-   rule that delivers the block. `v2/compact_nofallback.cfg`.
+   rule that delivers the block. `v2/compact_nofallback.cfg`. A paired
+   one-liner closes the announcement gap that feeds it: a replacement
+   block announcement stream SHOULD re-announce the current tip
+   (feedback item 2).
 5. **`initial_max_data` has no floor** (Tor preamble): sub-record
    connection credit wedges a record-granularity receiver.
    `v2/framing_wedge.cfg`.
 6. **Stream limits: "concurrent" in the preamble, cumulative in the
    framing section** — the readings stall silently or disconnect honest
    peers. `v2/framing_noraise.cfg`, `v2/framing_concurrent.cfg`.
-7. Smaller: `txouts` is hash-determined and relied upon but absent from
-   the penalty table; `OBSOLETE` should be explicitly non-bannable
+7. Smaller: `txouts` is hash-determined and now positions the sync
+   draft's spentness bitmap, but appears in neither the verify sentence
+   nor the penalty table; `OBSOLETE` should be explicitly non-bannable
    (`v2/epoch_ban.cfg`); the `get-block-range` first-block exemption must
    be symmetric (`v2/block_range_firstflood.cfg`).
+
+One scope question rather than a finding: "Deployment" specifies the
+dual-stack transition only as expectations. Whether the address book,
+address-keyed misbehavior scores, and dialability carry across the two
+stacks is left open — worth a sentence saying it is deliberately
+implementation-defined, or a couple of normative anchors (feedback
+item 15).
 
 Plus a note for the sync draft: only the explicit not-found result may
 mark a peer as lacking a block — `REFUSED` and truncation are sanctioned

@@ -1,9 +1,12 @@
 # Feedback for zcash/zips#1344 from the TLA+ model
 
-**Snapshot:** against draft revision `a3f4fa2a` (the revision Zebra's
-`SPEC-CONFORMANCE.md` pins), as of 2026-08-25. If the draft has moved,
-section names and line references may have shifted; the configs named
-below re-check each item and are run by this repository's CI on every push.
+**Snapshot:** against draft revision `65ec4f74` (PR head as of
+2026-09-01). The branch was rebased, so the previously pinned `a3f4fa2a`
+no longer exists as a commit; every item below was re-checked against the
+new head — all finding-relevant wording is unchanged, and the `txouts`
+addition (`fa3fd5c6`) sharpens item 14. If the draft moves again, section
+names and line references may shift; the configs named below re-check
+each item and are run by this repository's CI on every push.
 
 Each item has a reproducible TLC counterexample in `v2/`
 (`cd v2 && java -jar ../tla2tools.jar -config <cfg> <module>.tla`; the
@@ -14,7 +17,8 @@ Wording proposals are suggestions only.
 
 Summary — items proposing a change: 1, 2, 7, 8, 10, 11, 12, 13, 14, and 5
 (addressed to the sync draft / scheduler rather than this ZIP). Items 3,
-4, 6, 9 are confirmations that the text holds as written.
+4, 6, 9 are confirmations that the text holds as written. Item 15 is a
+scope remark on the Deployment section, not a model finding.
 
 ## 1. "Announcement Streams": replacement streams race with the singleton rule
 
@@ -303,3 +307,33 @@ sections, not the transport ones.
   verifies exactly (`v2/block_range.cfg`), and the deferred hint-penalty
   rules of "get-hashes" — including the size/eviction-primitive MUST NOT
   — are confirmed load-bearing as written (`v2/hashes_hints_*.cfg`).
+
+## 15. "Deployment": the dual-stack transition is described, not specified
+
+Not a model finding — there is no counterexample here; this is a scope
+remark. The Deployment section carries the whole coexistence story in
+expectation-level prose: an implementation "is expected to" run the
+legacy protocol alongside QUIC during the transition, and DNS seeders
+"are expected to" probe and serve QUIC endpoints ahead of activation.
+The one normative hook is the shared protocol-version numbering space,
+which lets ZIP 201 epoch enforcement retire legacy peers at activation —
+and that mechanism is exactly what the model verifies as sound
+(`v2/epoch.tla`, item 11).
+
+What the section leaves open, and implementations must each decide:
+
+- whether the address book, connection budget, and address-keyed
+  misbehavior scores ("Misbehavior and Banning") are shared between the
+  two stacks or kept separate;
+- whether an address learned over the legacy protocol may be dialed on
+  QUIC (and vice versa), which is what makes pre-activation QUIC
+  discovery converge;
+- whether the seeder probing expectation is uniform enough that upgraded
+  nodes reliably find QUIC peers before the flag day.
+
+Worth either one sentence stating that these are deliberately
+implementation-defined, or a few normative anchors, e.g.:
+
+> An address learned over either protocol MAY be dialed on the other.
+> Misbehavior scores are keyed by address ("Misbehavior and Banning")
+> and apply across both protocols during the transition.
