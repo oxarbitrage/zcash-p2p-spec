@@ -1,7 +1,8 @@
 <!--
-DRAFT comment for https://github.com/zcash/zips/pull/1344 — not posted.
-Short pointer form: the findings document in this repository is the source
-of truth; this comment only lists them. Edit freely, then paste.
+POSTED 2026-09-01 as
+https://github.com/zcash/zips/pull/1344#issuecomment-5498946454.
+This file is the record of what was posted; the findings document in this
+repository remains the source of truth for the items themselves.
 -->
 
 Following the "Formal Model" section's pointer to
@@ -12,6 +13,10 @@ sync, the download scheduler, misbehavior and banning, connection
 management, `get-mempool`, compact block relay, epoch enforcement, the Tor
 framing layer and the bulk-sync primitives — about 60 TLC checks run in
 CI, plus an Apalache induction proof of the scheduler's safety invariants.
+(All results are exhaustive model checking at small configurations —
+2–3 peers, small chains — except the scheduler invariant, which is proven
+inductive for unbounded behaviors; per-check bounds are in the linked
+documents.)
 
 Most of the draft verifies as written (the provability principle and its
 exemptions, the forward-compatibility MUST NOTs, refuse-as-two-operations,
